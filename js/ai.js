@@ -22,14 +22,19 @@ export async function suggestChecklist(context) {
     (context.have || 'nada') +
     '. Sugiere 8 ítems concretos de equipaje que falten (ropa por capas, calzado cómodo, documentos, tecnología, salud, abrigo impermeable). Responde SOLO una lista JSON de strings, por ejemplo: ["item1","item2"].';
 
-  const res = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(k),
-    {
+  const url =
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=' + encodeURIComponent(k);
+
+  let res;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    }
-  );
+    });
+    if (res.ok || (res.status !== 429 && res.status !== 503 && res.status < 500)) break;
+    await new Promise((r) => setTimeout(r, 1200));
+  }
   if (!res.ok) throw new Error('Error de Gemini: HTTP ' + res.status);
 
   const data = await res.json();
