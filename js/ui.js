@@ -97,13 +97,59 @@ function lockScroll() {
   document.body.classList.add('modal-open');
 }
 function unlockScroll() {
-  if (!document.querySelector('.sheet-overlay')) document.body.classList.remove('modal-open');
+  if (overlayStack.length === 0) document.body.classList.remove('modal-open');
 }
 
-export function closeSheet() {
-  const overlay = document.querySelector('.sheet-overlay');
-  if (overlay) overlay.remove();
+const overlayStack = [];
+let suppressPop = false;
+
+export function enterOverlay(el) {
+  overlayStack.push(el);
+  try {
+    history.pushState({ ov: overlayStack.length }, '');
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+export function exitOverlay(el) {
+  const i = overlayStack.indexOf(el);
+  if (i === -1) {
+    if (el && document.body.contains(el)) el.remove();
+    unlockScroll();
+    return;
+  }
+  const wasTop = i === overlayStack.length - 1;
+  overlayStack.splice(i, 1);
+  if (document.body.contains(el)) el.remove();
   unlockScroll();
+  if (wasTop) {
+    suppressPop = true;
+    try {
+      history.back();
+    } catch (_) {
+      suppressPop = false;
+    }
+  }
+}
+
+export function closeTopOverlay() {
+  const el = overlayStack[overlayStack.length - 1];
+  if (el) exitOverlay(el);
+}
+
+window.addEventListener('popstate', () => {
+  if (suppressPop) {
+    suppressPop = false;
+    return;
+  }
+  const el = overlayStack.pop();
+  if (el && document.body.contains(el)) el.remove();
+  unlockScroll();
+});
+
+export function closeSheet() {
+  closeTopOverlay();
 }
 
 function mountOverlay(overlay, { dismissible = true } = {}) {
@@ -121,6 +167,7 @@ function mountOverlay(overlay, { dismissible = true } = {}) {
   document.addEventListener('keydown', onKey);
   document.body.append(overlay);
   lockScroll();
+  enterOverlay(overlay);
   return overlay;
 }
 
@@ -300,6 +347,25 @@ function buildForm(fields, values) {
       if (field.help) list.append(h('div', { class: 'field__help' }, field.help));
       return;
     }
+    if (field.type === 'people') {
+      const current = Array.isArray(values[field.name]) ? values[field.name] : field.options || [];
+      const boxes = [];
+      const wrap = h('div', { class: 'list' });
+      for (const p of field.options || []) {
+        const cb = h('input', { type: 'checkbox', checked: current.includes(p) });
+        boxes.push({ name: p, cb });
+        wrap.append(
+          h('label', { class: 'field field--check' }, h('span', { class: 'field__label' }, p), h('span', { class: 'switch' }, cb, h('span', {})))
+        );
+      }
+      const sec = h('section', { class: 'section' }, h('div', { class: 'section__header' }, field.label), wrap);
+      sec._people = boxes;
+      sec._name = field.name;
+      form._peopleFields = form._peopleFields || [];
+      form._peopleFields.push(sec);
+      form.append(sec);
+      return;
+    }
     const control = fieldControl(field, values);
     let row;
     if (field.type === 'textarea') {
@@ -370,6 +436,9 @@ export function openForm({ title, fields, values = {}, onSubmit, submitText = 'G
       else if (field.type === 'number') data[field.name] = input.value === '' ? '' : Number(input.value);
       else data[field.name] = input.value.trim();
     }
+    for (const sec of form._peopleFields || []) {
+      data[sec._name] = sec._people.filter((b) => b.cb.checked).map((b) => b.name);
+    }
     for (const field of fields) {
       if (field.required && (data[field.name] === '' || data[field.name] == null)) {
         toast('Completa: ' + field.label, 'error');
@@ -418,7 +487,7 @@ export function openDocViewer(blob, { type = 'pdf', nombre = '' } = {}) {
   const head = h(
     'div',
     { class: 'docview__head' },
-    h('button', { class: 'nav-btn docview__close', onClick: () => { URL.revokeObjectURL(url); overlay.remove(); } }, '‹ Volver'),
+    h('button', { class: 'nav-btn docview__close', onClick: () => { URL.revokeObjectURL(url); closeTopOverlay(); } }, '‹ Volver'),
     h('div', { class: 'docview__title' }, nombre || 'Documento')
   );
   const content = type === 'imagen'
@@ -426,6 +495,8 @@ export function openDocViewer(blob, { type = 'pdf', nombre = '' } = {}) {
     : h('iframe', { class: 'docview__frame', src: url });
   overlay.append(head, content);
   document.body.append(overlay);
+  lockScroll();
+  enterOverlay(overlay);
   return overlay;
 }
 

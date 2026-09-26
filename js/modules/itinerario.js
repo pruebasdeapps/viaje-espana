@@ -103,6 +103,11 @@ export function primaryAction() {
   return { icon: 'plus', label: 'Añadir actividad', onClick: create };
 }
 
+export function openDay(fecha) {
+  if (fecha) setExpanded(fecha, true);
+  location.hash = '#/itinerario';
+}
+
 function activityRow(it) {
   const st = styleFor(it.categoria);
   const sub = [it.lugar, it.costo ? fmtMoney(it.costo) : ''].filter(Boolean).join(' · ');

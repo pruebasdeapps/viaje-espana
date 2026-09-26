@@ -40,6 +40,68 @@ export function toBase(monto, moneda) {
   return (Number(monto) || 0) * (baseRate / rate);
 }
 
+function allPeopleSet(items) {
+  const set = new Set(people());
+  items.forEach((g) => {
+    if (g.pagado_por) set.add(g.pagado_por);
+    if (Array.isArray(g.participantes)) g.participantes.forEach((p) => set.add(p));
+  });
+  return [...set];
+}
+
+export function participantsOf(g, all) {
+  if (Array.isArray(g.participantes) && g.participantes.length) return g.participantes;
+  return all || people();
+}
+
+export function paidByPerson(items) {
+  const names = allPeopleSet(items);
+  return names.map((p) => ({
+    label: p,
+    value: items.filter((g) => (g.pagado_por || '') === p).reduce((s, g) => s + toBase(g.monto, g.moneda), 0),
+  }));
+}
+
+export function computeBalances(items) {
+  const names = allPeopleSet(items);
+  const bal = new Map(names.map((p) => [p, 0]));
+  for (const g of items) {
+    const amt = toBase(g.monto, g.moneda);
+    const payer = g.pagado_por;
+    if (payer) bal.set(payer, (bal.get(payer) || 0) + amt);
+    const parts = participantsOf(g, names);
+    if (parts.length) {
+      const share = amt / parts.length;
+      for (const p of parts) bal.set(p, (bal.get(p) || 0) - share);
+    }
+  }
+  return bal;
+}
+
+export function settle(balances) {
+  const debtors = [];
+  const creditors = [];
+  for (const [name, v] of balances) {
+    const r = Math.round(v * 100) / 100;
+    if (r < -0.005) debtors.push({ name, v: -r });
+    else if (r > 0.005) creditors.push({ name, v: r });
+  }
+  debtors.sort((a, b) => b.v - a.v);
+  creditors.sort((a, b) => b.v - a.v);
+  const transfers = [];
+  let i = 0;
+  let j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const pay = Math.min(debtors[i].v, creditors[j].v);
+    transfers.push({ from: debtors[i].name, to: creditors[j].name, amount: Math.round(pay * 100) / 100 });
+    debtors[i].v -= pay;
+    creditors[j].v -= pay;
+    if (debtors[i].v < 0.005) i++;
+    if (creditors[j].v < 0.005) j++;
+  }
+  return transfers;
+}
+
 function styleFor(cat) {
   const [iconName, iconColor] = CAT_STYLE[cat] || CAT_STYLE.Otros;
   return { iconName, iconColor };
@@ -66,6 +128,7 @@ function fieldsFor(items) {
     { name: 'moneda', label: 'Moneda', type: 'select', options: Object.keys(rates()), section: 'Importe' },
     { name: 'metodo', label: 'Método', type: 'select', options: metodos(), section: 'Importe' },
     { name: 'pagado_por', label: 'Pagado por', type: 'combobox', options: distinctPayers(items), section: 'Importe' },
+    { name: 'participantes', label: 'Dividir entre', type: 'people', options: distinctPayers(items), section: 'Reparto' },
     { name: 'nota', label: 'Notas', type: 'textarea', section: 'Importe' },
     { name: 'id', type: 'hidden' },
   ];
@@ -163,6 +226,29 @@ function resumenView(items) {
   frag.append(
     section('Por persona', barList(porPersona.map((p) => ({ ...p, sub: p.count + ' pagos', color: 'var(--tint)' }))))
   );
+
+  const balances = computeBalances(items);
+  const transfers = settle(balances);
+  const balRows = [...balances.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, v]) =>
+      row({
+        iconName: v >= 0 ? 'check' : 'euro',
+        iconColor: v >= 0 ? 'green' : 'red',
+        title: name,
+        sub: v >= 0 ? 'le deben' : 'debe',
+        detail: fmtMoney(Math.abs(v), baseCurrency()),
+        detailStrong: true,
+      })
+    );
+  const debtRows = transfers.length
+    ? list(
+        ...transfers.map((t) =>
+          row({ iconName: 'euro', iconColor: 'orange', title: t.from + ' → ' + t.to, detail: fmtMoney(t.amount, baseCurrency()), detailStrong: true })
+        )
+      )
+    : list(row({ iconName: 'check', iconColor: 'green', title: 'Todo cuadra', sub: 'No hay deudas pendientes' }));
+  frag.append(section('Quién debe a quién', h('div', {}, debtRows, h('div', { style: { height: '12px' } }), list(...balRows))));
 
   const porTipo = new Map();
   for (const g of items) {

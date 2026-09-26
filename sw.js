@@ -1,4 +1,4 @@
-const CACHE = 'viaje-v11';
+const CACHE = 'viaje-v12';
 
 const APP_SHELL = [
   './',

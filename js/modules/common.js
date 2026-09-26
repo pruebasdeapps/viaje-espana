@@ -1,4 +1,4 @@
-import { h, icon, toast } from '../ui.js';
+import { h, icon, toast, fmtMoney } from '../ui.js';
 import { mapUrl, directionsUrl, streetViewUrl, photosUrl, telUrl, share, calendarUrl, openExternal } from '../platform.js';
 import { get as getSetting } from '../settings.js';
 
@@ -155,4 +155,22 @@ export function switchEl(checked, onChange) {
     h('input', { type: 'checkbox', checked: !!checked, onChange: (e) => onChange(e.target.checked) }),
     h('span', {})
   );
+}
+
+export function barChart(items, { currency = 'EUR' } = {}) {
+  const max = Math.max(...items.map((i) => i.value), 0.01);
+  const wrap = h('div', { class: 'chart' });
+  for (const it of items) {
+    const pct = Math.max(5, Math.round((it.value / max) * 100));
+    wrap.append(
+      h(
+        'div',
+        { class: 'chart__col' },
+        h('span', { class: 'chart__val' }, fmtMoney(it.value, currency)),
+        h('div', { class: 'chart__track' }, h('div', { class: 'chart__bar', style: { height: pct + '%', background: it.color || 'var(--tint)' } })),
+        h('span', { class: 'chart__label' }, it.label)
+      )
+    );
+  }
+  return wrap;
 }

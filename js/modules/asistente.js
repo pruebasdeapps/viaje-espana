@@ -1,4 +1,4 @@
-import { h, fmtMoney, icon } from '../ui.js';
+import { h, fmtMoney, icon, enterOverlay, closeTopOverlay } from '../ui.js';
 import { list as storeList } from '../store.js';
 import { get as getSetting, all as settingsAll } from '../settings.js';
 import { searchUrl, openExternal } from '../platform.js';
@@ -80,7 +80,7 @@ export function open() {
     'div',
     { class: 'chat__head' },
     h('div', { class: 'chat__title' }, 'Papacito'),
-    h('button', { class: 'nav-btn', onClick: () => overlay.remove() }, 'Listo')
+    h('button', { class: 'nav-btn', onClick: closeTopOverlay }, 'Listo')
   );
   const chips = h(
     'div',
@@ -94,6 +94,7 @@ export function open() {
 
   overlay.append(head, chips, listEl, inputBar);
   document.body.append(overlay);
+  enterOverlay(overlay);
 
   function bubble(role, text) {
     const wrap = h('div', { class: 'msg__bubble' });
