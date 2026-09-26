@@ -132,19 +132,22 @@ function updateScrolled() {
 let gated = false;
 let defaultLogin = null;
 let fab = null;
+let fabLabel = null;
 
 function ensureFab() {
   if (fab) return;
   fab = h(
     'button',
-    { class: 'fab', 'aria-label': 'Pregúntale a Papacito', 'data-tip': 'Pregúntale a Papacito', title: 'Pregúntale a Papacito', type: 'button', onClick: openAsistente },
+    { class: 'fab', 'aria-label': 'Pregúntale a Papacito', type: 'button', onClick: openAsistente },
     icon('carita', { size: 30, strokeWidth: 1.8 })
   );
-  document.body.append(fab);
+  fabLabel = h('div', { class: 'fab-label' }, 'Pregúntale a Papacito');
+  document.body.append(fabLabel, fab);
 }
 
 function setFabVisible(visible) {
   if (fab) fab.style.display = visible ? 'grid' : 'none';
+  if (fabLabel) fabLabel.style.display = visible ? 'block' : 'none';
 }
 
 async function loadDefaultLogin() {
