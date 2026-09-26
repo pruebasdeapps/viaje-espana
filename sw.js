@@ -1,4 +1,4 @@
-const CACHE = 'viaje-v9';
+const CACHE = 'viaje-v10';
 
 const APP_SHELL = [
   './',
@@ -17,6 +17,7 @@ const APP_SHELL = [
   './js/platform.js',
   './js/geo.js',
   './js/ai.js',
+  './js/weather.js',
   './js/seed.js',
   './js/modules/common.js',
   './js/modules/hoy.js',

@@ -237,6 +237,11 @@ export function initSync() {
     if (currentUser() && getSetting('autoSync') && networkAllowed()) pull();
     if (currentUser() && getSetting('autoSync') && networkAllowed()) pushAll();
   });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentUser() && getSetting('autoSync') && networkAllowed()) pull();
+  });
+
   if (currentUser()) pull();
 
   setInterval(() => {
@@ -244,4 +249,13 @@ export function initSync() {
     if (getVersion() <= lastPushedVersion) return;
     pushAll();
   }, 5000);
+
+  function schedulePullLoop() {
+    const secs = Math.max(30, Number(getSetting('pullInterval')) || 60);
+    setTimeout(() => {
+      if (SYNC_ENABLED && currentUser() && getSetting('autoSync') && networkAllowed()) pull();
+      schedulePullLoop();
+    }, secs * 1000);
+  }
+  schedulePullLoop();
 }

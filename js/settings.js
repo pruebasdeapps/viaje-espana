@@ -24,6 +24,9 @@ const DEFAULTS = {
   autoSync: true,
   syncWifiOnly: false,
   syncInterval: 'manual',
+  pullInterval: 60,
+  expandedDays: [],
+  showPastDays: false,
 };
 
 function load() {

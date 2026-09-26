@@ -46,6 +46,7 @@ const PATHS = {
   grafica: '<path d="M4 4v15.5h16"/><path d="M8 16v-4.5M12 16V7.5M16 16v-6.5"/>',
   personas: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16 14.5a4.5 4.5 0 0 1 4.5 5"/>',
   clip: '<path d="M20.5 11.5l-8.4 8.4a5.2 5.2 0 0 1-7.4-7.4L13 4.3a3.6 3.6 0 0 1 5.1 5.1l-8.4 8.4a2 2 0 0 1-2.9-2.9l8-8"/>',
+  carita: '<circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1.15" fill="currentColor" stroke="none"/><path d="M8.3 14.4a4.6 4.6 0 0 0 7.4 0"/>',
   sobre_cerrado: '<rect x="3" y="5.5" width="18" height="13" rx="3"/><path d="M4 7.5l8 5.5 8-5.5"/>',
   informacion: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.2M12 7.8h.01"/>',
 };

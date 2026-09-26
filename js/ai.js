@@ -1,3 +1,6 @@
+import { CONFIG, SYNC_ENABLED } from './config.js';
+import { authToken } from './sync.js';
+
 let key = null;
 
 async function loadKey() {
@@ -11,9 +14,32 @@ async function loadKey() {
   return key;
 }
 
-async function chat(messages) {
+async function callAI(messages) {
+  if (SYNC_ENABLED) {
+    const token = authToken();
+    if (token) {
+      try {
+        const res = await fetch(CONFIG.supabaseUrl.replace(/\/$/, '') + '/functions/v1/ai', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token,
+            apikey: CONFIG.supabaseAnonKey,
+          },
+          body: JSON.stringify({ messages }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.text) return data.text;
+        }
+      } catch (_) {
+        /* probar con la clave local */
+      }
+    }
+  }
+
   const k = await loadKey();
-  if (!k) throw new Error('Configura la clave de DeepSeek en js/ai.local.js');
+  if (!k) throw new Error('IA no configurada. Despliega la función "ai" en Supabase o añade la clave local.');
 
   const url = 'https://api.deepseek.com/chat/completions';
   let res;
@@ -26,13 +52,13 @@ async function chat(messages) {
     if (res.ok || (res.status !== 429 && res.status !== 503 && res.status < 500)) break;
     await new Promise((r) => setTimeout(r, 1200));
   }
-  if (!res.ok) throw new Error('Error de DeepSeek: HTTP ' + res.status);
+  if (!res.ok) throw new Error('Error de IA: HTTP ' + res.status);
   const data = await res.json();
   return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
 }
 
 export async function askChat(query) {
-  return chat([
+  return callAI([
     { role: 'system', content: 'Eres "Papacito", un asistente de viajes amable, breve y útil. Respondes en español.' },
     { role: 'user', content: query },
   ]);
@@ -46,7 +72,7 @@ export async function suggestChecklist(context) {
     (context.have || 'nada') +
     '. Sugiere 8 ítems concretos de equipaje que falten (ropa por capas, calzado cómodo, documentos, tecnología, salud, abrigo impermeable). Responde SOLO una lista JSON de strings, por ejemplo: ["item1","item2"].';
 
-  const text = await chat([
+  const text = await callAI([
     { role: 'system', content: 'Respondes únicamente con JSON válido.' },
     { role: 'user', content: prompt },
   ]);

@@ -6,6 +6,8 @@ import { create as addActividad } from './itinerario.js';
 import { create as addGasto, toBase } from './gastos.js';
 import { create as addLugar } from './lugares.js';
 import { openArchivo, archivoLabel } from './documentos.js';
+import { forecast, coordsForCity } from '../weather.js';
+import { CITY_COUNTRY } from '../geo.js';
 
 export const meta = { key: 'hoy', label: 'Hoy', icon: 'sol' };
 
@@ -18,6 +20,30 @@ function timeToMinutes(t) {
   if (!t) return 9999;
   const [hh, mm] = t.split(':').map(Number);
   return (hh || 0) * 60 + (mm || 0);
+}
+
+function cityFromText(text) {
+  if (!text) return null;
+  for (const city of Object.keys(CITY_COUNTRY)) if (text.includes(city)) return city;
+  return null;
+}
+
+function weatherRow(ciudad, fecha) {
+  const r = row({ iconName: 'sol', iconColor: 'tint', title: 'Clima', sub: ciudad || '', detail: '…' });
+  const detail = r.querySelector('.row__detail');
+  const c = coordsForCity(ciudad);
+  if (!c) {
+    detail.textContent = '—';
+    return r;
+  }
+  forecast(c.lat, c.lng, fecha)
+    .then((w) => {
+      detail.textContent = w ? `${w.desc} · ${Math.round(w.tmin)}°/${Math.round(w.tmax)}°` : 'Sin datos';
+    })
+    .catch(() => {
+      detail.textContent = '—';
+    });
+  return r;
 }
 
 function daysBetween(a, b) {
@@ -80,6 +106,10 @@ export function render() {
   const listos = checklist.filter((c) => c.hecho).length;
 
   const entradasHoy = storeList('documentos').filter((d) => d.fecha === hoy);
+
+  const refAct = deHoy[0] || proximas[0] || null;
+  const ciudadHoy = cityFromText(refAct && refAct.lugar) || cityFromText(refAct && refAct.direccion);
+  const climaFecha = deHoy.length ? hoy : proximas[0] ? proximas[0].fecha : hoy;
 
   const fragment = h('div', {});
 
@@ -156,6 +186,7 @@ export function render() {
     section(
       'Resumen del viaje',
       list(
+        weatherRow(ciudadHoy, climaFecha),
         row({ iconName: 'euro', iconColor: 'green', title: 'Gastado hoy', detail: fmtMoney(totalHoy, settingsAll().currency), detailStrong: true }),
         row({ iconName: 'euro', iconColor: 'indigo', title: 'Total del viaje', detail: fmtMoney(totalViaje, settingsAll().currency), detailStrong: true }),
         row({

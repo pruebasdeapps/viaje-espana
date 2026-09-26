@@ -113,7 +113,14 @@ function renderView() {
     h('div', {}, h('h1', { class: 'large-title' }, mod.meta.label), mod.subtitle ? h('p', { class: 'large-sub' }, mod.subtitle()) : null)
   );
 
-  view.append(h('div', { class: 'page' }, titleWrap, mod.render()));
+  let content;
+  try {
+    content = mod.render();
+  } catch (e) {
+    console.error('render ' + key, e);
+    content = h('div', { class: 'empty' }, h('p', {}, 'No se pudo mostrar esta sección. Vuelve a intentarlo.'));
+  }
+  view.append(h('div', { class: 'page' }, titleWrap, content));
 }
 
 function updateScrolled() {
@@ -131,7 +138,7 @@ function ensureFab() {
   fab = h(
     'button',
     { class: 'fab', 'aria-label': 'Pregúntale a Papacito', 'data-tip': 'Pregúntale a Papacito', title: 'Pregúntale a Papacito', type: 'button', onClick: openAsistente },
-    icon('info', { size: 26, strokeWidth: 1.8 })
+    icon('carita', { size: 30, strokeWidth: 1.8 })
   );
   document.body.append(fab);
 }
@@ -256,6 +263,63 @@ function registerServiceWorker() {
   });
 }
 
+function setupPullToRefresh() {
+  let startY = 0;
+  let pullDy = 0;
+  let active = false;
+  const indicator = h('div', { class: 'ptr' }, icon('refrescar', { size: 22 }));
+  document.body.append(indicator);
+
+  document.addEventListener(
+    'touchstart',
+    (e) => {
+      if (window.scrollY <= 0 && !document.querySelector('.sheet-overlay,.chat-overlay,.docview,.action-sheet')) {
+        startY = e.touches[0].clientY;
+        active = true;
+      } else {
+        active = false;
+      }
+    },
+    { passive: true }
+  );
+
+  document.addEventListener(
+    'touchmove',
+    (e) => {
+      if (!active) return;
+      pullDy = e.touches[0].clientY - startY;
+      if (pullDy > 0) {
+        indicator.style.transform = 'translateY(' + Math.min(pullDy, 90) + 'px)';
+        indicator.classList.add('ptr--visible');
+      }
+    },
+    { passive: true }
+  );
+
+  document.addEventListener(
+    'touchend',
+    () => {
+      if (!active) return;
+      const dy = pullDy;
+      pullDy = 0;
+      active = false;
+      indicator.style.transform = '';
+      indicator.classList.remove('ptr--visible');
+      if (dy > 60) {
+        indicator.classList.add('ptr--spin');
+        setTimeout(() => indicator.classList.remove('ptr--spin'), 1300);
+        syncNow();
+      }
+    },
+    { passive: true }
+  );
+}
+
+function setupGlobalErrors() {
+  window.addEventListener('error', (e) => console.error('Error global:', e.error || e.message));
+  window.addEventListener('unhandledrejection', (e) => console.error('Promesa rechazada:', e.reason));
+}
+
 async function boot() {
   document.getElementById('view').append(h('div', { class: 'loading' }, 'Cargando viaje…'));
 
@@ -294,6 +358,8 @@ async function boot() {
   window.addEventListener('online', () => toast('Conexión restablecida', 'success'));
   window.addEventListener('offline', () => toast('Sin conexión — seguís funcionando offline', 'info'));
 
+  setupPullToRefresh();
+  setupGlobalErrors();
   registerServiceWorker();
 }
 

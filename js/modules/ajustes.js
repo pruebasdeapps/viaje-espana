@@ -5,6 +5,7 @@ import { exportJSON, importJSON, resetAll, list as storeList } from '../store.js
 import { login, signup, logout, currentUser, onStatus, syncNow } from '../sync.js';
 import { icsExport } from '../platform.js';
 import { section, row, list } from './common.js';
+import { renderHistory } from './itinerario.js';
 
 export const meta = { key: 'ajustes', label: 'Configuración', icon: 'ajustes' };
 
@@ -281,10 +282,29 @@ function cuentaSection() {
       })
     );
     const statusRow = row({ iconName: 'info', iconColor: 'gray', title: 'Estado', detail: '…' });
+    const lastRow = row({ iconName: 'reloj', iconColor: 'gray', title: 'Última actualización', detail: '—' });
     onStatus((s) => {
       statusRow.querySelector('.row__detail').textContent = s.message || s.state;
+      lastRow.querySelector('.row__detail').textContent = s.last
+        ? new Date(s.last).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+        : '—';
     });
-    rows.push(statusRow);
+    rows.push(statusRow, lastRow);
+    rows.push(
+      pickerRow({
+        iconName: 'refrescar',
+        iconColor: 'teal',
+        title: 'Actualización automática',
+        value: get('pullInterval'),
+        options: [
+          { value: 30, label: 'Cada 30 s' },
+          { value: 60, label: 'Cada 60 s' },
+          { value: 120, label: 'Cada 2 min' },
+          { value: 300, label: 'Cada 5 min' },
+        ],
+        onChange: (v) => set('pullInterval', v),
+      })
+    );
     rows.push(row({ iconName: 'refrescar', iconColor: 'indigo', title: 'Sincronizar ahora', onClick: () => syncNow(), chevron: true }));
     rows.push(
       row({
@@ -426,6 +446,19 @@ export function render() {
           detail: String((get('countryOrder') || []).length),
           chevron: true,
           onClick: () => openListEditor('countryOrder', 'Orden de países'),
+        }),
+        row({
+          iconName: 'calendario',
+          iconColor: 'purple',
+          title: 'Histórico del itinerario',
+          sub: 'Días ya pasados',
+          chevron: true,
+          onClick: () =>
+            openSheet({
+              title: 'Histórico del itinerario',
+              body: h('div', {}, renderHistory()),
+              leading: h('button', { class: 'nav-btn', onClick: closeSheet }, 'Listo'),
+            }),
         })
       )
     )
