@@ -178,6 +178,9 @@ export async function resetAll() {
   await wipe();
   cache = new Map();
   const data = await loadSeed();
-  if (data.length) await seed(data);
+  if (data.length) {
+    await seed(data);
+    for (const item of cache.values()) notify(item);
+  }
   emit();
 }
