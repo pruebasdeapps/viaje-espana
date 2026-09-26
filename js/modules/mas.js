@@ -41,7 +41,7 @@ export function render() {
     section(
       'Asistente',
       list(
-        row({ iconName: 'info', iconColor: 'tint', title: 'Preguntar al asistente', sub: 'Recomendaciones según tu viaje', chevron: true, onClick: openAsistente })
+        row({ iconName: 'info', iconColor: 'tint', title: 'Pregúntale a Papacito', sub: 'Recomendaciones y búsqueda web', chevron: true, onClick: openAsistente })
       )
     )
   );

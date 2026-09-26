@@ -1,4 +1,4 @@
-import { h, openForm, confirmDialog, fmtDate, fmtMoney, toast, attachContextMenu } from '../ui.js';
+import { h, openForm, confirmDialog, fmtDate, fmtMoney, toast, attachContextMenu, openDocViewer } from '../ui.js';
 import { list as storeList, save, remove } from '../store.js';
 import { section, row, list, empty, badge } from './common.js';
 import { mapUrl, openExternal } from '../platform.js';
@@ -19,6 +19,10 @@ const TYPE_STYLE = {
   Otro: ['info', 'gray'],
 };
 const FILE_LABEL = { pdf: 'PDF', pkpass: 'Pass', imagen: 'Imagen', otro: 'Archivo' };
+
+export function archivoLabel(tipo) {
+  return FILE_LABEL[tipo] || 'Archivo';
+}
 
 function styleFor(t) {
   const [iconName, iconColor] = TYPE_STYLE[t] || TYPE_STYLE.Otro;
@@ -101,7 +105,7 @@ function attachFile(d) {
   input.click();
 }
 
-async function openFile(d) {
+export async function openArchivo(d) {
   try {
     if (d.archivo_tipo === 'pkpass') {
       const url = await signedUrl('entradas', d.archivo);
@@ -115,8 +119,7 @@ async function openFile(d) {
       blob = await downloadFile('entradas', d.archivo);
       await putFile({ path: d.archivo, blob, type: d.archivo_tipo, nombre: d.archivo_nombre });
     }
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+    openDocViewer(blob, { type: d.archivo_tipo === 'imagen' ? 'imagen' : 'pdf', nombre: d.archivo_nombre || d.titulo });
   } catch (e) {
     toast(e.message, 'error');
   }
@@ -163,14 +166,14 @@ export function render() {
         title: d.titulo,
         sub: [d.numero ? 'Ref ' + d.numero : '', fmtDate(d.fecha), d.hora, d.precio ? fmtMoney(d.precio) : ''].filter(Boolean).join(' · ') || null,
         note: d.ubicacion || null,
-        accessory: d.archivo ? h('span', { class: 'row__accessory' }, badge(FILE_LABEL[d.archivo_tipo] || 'Archivo', 'tint')) : null,
+        accessory: d.archivo ? h('span', { class: 'row__accessory' }, badge(archivoLabel(d.archivo_tipo), 'tint')) : null,
         chevron: true,
         wrap: true,
-        onClick: () => edit(d),
+        onClick: () => (d.archivo ? openArchivo(d) : edit(d)),
       });
       attachContextMenu(r, () => {
         const items = [];
-        if (d.archivo) items.push({ label: 'Abrir archivo (' + (FILE_LABEL[d.archivo_tipo] || 'Archivo') + ')', onClick: () => openFile(d) });
+        if (d.archivo) items.push({ label: 'Abrir archivo (' + archivoLabel(d.archivo_tipo) + ')', onClick: () => openArchivo(d) });
         items.push({ label: d.archivo ? 'Cambiar archivo' : 'Adjuntar archivo', onClick: () => attachFile(d) });
         if (d.archivo) items.push({ label: 'Quitar archivo', danger: true, onClick: () => removeArchivo(d) });
         if (d.url) items.push({ label: 'Abrir enlace', onClick: () => window.open(d.url, '_blank') });

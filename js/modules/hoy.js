@@ -5,6 +5,7 @@ import { section, row, list } from './common.js';
 import { create as addActividad } from './itinerario.js';
 import { create as addGasto, toBase } from './gastos.js';
 import { create as addLugar } from './lugares.js';
+import { openArchivo, archivoLabel } from './documentos.js';
 
 export const meta = { key: 'hoy', label: 'Hoy', icon: 'sol' };
 
@@ -78,6 +79,8 @@ export function render() {
   const checklist = storeList('checklist');
   const listos = checklist.filter((c) => c.hecho).length;
 
+  const entradasHoy = storeList('documentos').filter((d) => d.fecha === hoy);
+
   const fragment = h('div', {});
 
   const fechas = itinerario.map((i) => i.fecha).filter(Boolean).sort();
@@ -128,6 +131,27 @@ export function render() {
     )
   );
 
+  if (entradasHoy.length) {
+    fragment.append(
+      section(
+        'Entradas y reservas de hoy',
+        list(
+          ...entradasHoy.map((d) =>
+            row({
+              iconName: d.archivo_tipo === 'pkpass' ? 'candado' : 'documentos',
+              iconColor: 'orange',
+              title: d.titulo,
+              sub: [d.tipo, d.hora].filter(Boolean).join(' · ') || null,
+              detail: d.archivo ? archivoLabel(d.archivo_tipo) : '',
+              chevron: true,
+              onClick: () => (d.archivo ? openArchivo(d) : (location.hash = '#/documentos')),
+            })
+          )
+        )
+      )
+    );
+  }
+
   fragment.append(
     section(
       'Resumen del viaje',
@@ -155,7 +179,8 @@ export function render() {
         row({ iconName: 'calendario', iconColor: 'tint', title: 'Añadir actividad', onClick: addActividad }),
         row({ iconName: 'euro', iconColor: 'green', title: 'Registrar gasto', onClick: addGasto }),
         row({ iconName: 'lugares', iconColor: 'red', title: 'Guardar lugar', onClick: addLugar }),
-        row({ iconName: 'maleta', iconColor: 'orange', title: 'Ver equipaje', chevron: true, onClick: () => (location.hash = '#/checklist') })
+        row({ iconName: 'maleta', iconColor: 'orange', title: 'Ver equipaje', chevron: true, onClick: () => (location.hash = '#/checklist') }),
+        row({ iconName: 'documentos', iconColor: 'indigo', title: 'Ver entradas', chevron: true, onClick: () => (location.hash = '#/documentos') })
       )
     )
   );

@@ -410,3 +410,20 @@ export function emptyState(iconName, message, actionLabel, action) {
     actionLabel ? h('button', { class: 'btn btn--primary', onClick: action }, actionLabel) : null
   );
 }
+
+export function openDocViewer(blob, { type = 'pdf', nombre = '' } = {}) {
+  const url = URL.createObjectURL(blob);
+  const overlay = h('div', { class: 'docview' });
+  const head = h(
+    'div',
+    { class: 'docview__head' },
+    h('button', { class: 'nav-btn docview__close', onClick: () => { URL.revokeObjectURL(url); overlay.remove(); } }, '‹ Volver'),
+    h('div', { class: 'docview__title' }, nombre || 'Documento')
+  );
+  const content = type === 'imagen'
+    ? h('img', { class: 'docview__img', src: url, alt: nombre || '' })
+    : h('iframe', { class: 'docview__frame', src: url });
+  overlay.append(head, content);
+  document.body.append(overlay);
+  return overlay;
+}

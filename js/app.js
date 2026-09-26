@@ -128,7 +128,11 @@ let fab = null;
 
 function ensureFab() {
   if (fab) return;
-  fab = h('button', { class: 'fab', 'aria-label': 'Asistente', type: 'button', onClick: openAsistente }, icon('info', { size: 26, strokeWidth: 1.8 }));
+  fab = h(
+    'button',
+    { class: 'fab', 'aria-label': 'Pregúntale a Papacito', 'data-tip': 'Pregúntale a Papacito', title: 'Pregúntale a Papacito', type: 'button', onClick: openAsistente },
+    icon('info', { size: 26, strokeWidth: 1.8 })
+  );
   document.body.append(fab);
 }
 

@@ -4,8 +4,9 @@ import { get as getSetting, all as settingsAll } from '../settings.js';
 import { searchUrl, openExternal } from '../platform.js';
 import { CITY_COUNTRY } from '../geo.js';
 import { toBase } from './gastos.js';
+import { askWeb } from '../ai.js';
 
-export const meta = { key: 'asistente', label: 'Asistente', icon: 'info' };
+export const meta = { key: 'asistente', label: 'Papacito', icon: 'info' };
 
 const SUGGESTIONS = ['¿Qué comer en Roma?', '¿Qué ver en París?', '¿Qué toca el día 6?', '¿Cuánto llevamos gastado?', '¿Dónde nos alojamos?'];
 
@@ -16,11 +17,9 @@ function findCity(query) {
 }
 
 function placesList(title, places) {
-  if (!places.length) {
-    return { text: title + ': no tengo lugares de ese tipo todavía. Prueba con otra ciudad o categoría.', google: title };
-  }
+  if (!places.length) return { text: title + ': no tengo lugares de ese tipo todavía. Consultando la web…' };
   const lines = places.slice(0, 8).map((p) => `• ${p.nombre}${p.ciudad ? ' — ' + p.ciudad : ''}${p.direccion ? ' (' + p.direccion + ')' : ''}`);
-  return { text: title + ':\n' + lines.join('\n'), google: title };
+  return { text: title + ':\n' + lines.join('\n') };
 }
 
 function answer(query) {
@@ -43,21 +42,21 @@ function answer(query) {
     const fecha = '2027-02-' + day.padStart(2, '0');
     const acts = storeList('itinerario').filter((i) => i.fecha === fecha);
     if (acts.length) {
-      return { text: 'Día ' + day + ' (febrero):\n' + acts.map((a) => `• ${a.hora || ''} ${a.titulo}${a.lugar ? ' — ' + a.lugar : ''}`).join('\n'), google: 'itinerario ' + fecha };
+      return { text: 'Día ' + day + ' (febrero):\n' + acts.map((a) => `• ${a.hora || ''} ${a.titulo}${a.lugar ? ' — ' + a.lugar : ''}`).join('\n') };
     }
-    return { text: 'No tengo actividades el día ' + day + ' de febrero.', google: 'itinerario ' + fecha };
+    return { text: 'No tengo actividades el día ' + day + ' de febrero.' };
   }
   if (has(['gasto', 'cuánto', 'cuanto', 'presupuesto', 'dinero', 'llevamos'])) {
     const g = storeList('gastos');
     const total = g.reduce((s, x) => s + toBase(x.monto, x.moneda), 0);
-    if (!g.length) return { text: 'Todavía no habéis registrado gastos. Ve a la pestaña Gastos.', google: 'gastos de viaje' };
+    if (!g.length) return { text: 'Todavía no habéis registrado gastos. Ve a la pestaña Gastos.' };
     const people = [...new Set(g.map((x) => x.pagado_por).filter(Boolean))];
     const per = people.map((p) => `• ${p}: ${fmtMoney(g.filter((x) => x.pagado_por === p).reduce((s, x) => s + toBase(x.monto, x.moneda), 0), settingsAll().currency)}`);
     return { text: `Lleváis ${fmtMoney(total, settingsAll().currency)} en total.\nPor persona:\n${per.join('\n')}` };
   }
   if (has(['hotel', 'hospedaje', 'alojamiento', 'dormir', 'alojamos', 'quedamos', 'donde dormimos'])) {
     const hs = storeList('hospedajes');
-    if (!hs.length) return { text: 'No tengo hospedajes registrados aún.', google: 'hoteles' };
+    if (!hs.length) return { text: 'No tengo hospedajes registrados aún.' };
     return { text: 'Alojamientos:\n' + hs.map((x) => `• ${x.nombre} (${x.ciudad}) — ${x.noches || '?'} noches`).join('\n') };
   }
   if (has(['empacar', 'equipaje', 'llevar', 'maleta', 'checklist', 'que llevar'])) {
@@ -67,11 +66,10 @@ function answer(query) {
   }
   if (has(['ruta', 'orden', 'país', 'pais', 'recorrido', 'ciudades'])) {
     const order = getSetting('countryOrder') || [];
-    return { text: 'Ruta del viaje: ' + order.join(' → ') + '.', google: 'ruta ' + order.join(' ') };
+    return { text: 'Ruta del viaje: ' + order.join(' → ') + '.' };
   }
   return {
-    text: 'Puedo ayudarte con los sitios precargados. Prueba:\n• "¿Qué comer en Roma?"\n• "¿Qué ver en París?"\n• "¿Qué toca el día 6?"\n• "¿Cuánto llevamos gastado?"\n• "¿Dónde nos alojamos?"',
-    google: query,
+    text: 'Puedo ayudarte con los sitios precargados o buscando en la web. Prueba:\n• "¿Qué comer en Roma?"\n• "¿Qué ver en París?"\n• "¿Qué toca el día 6?"\n• "¿Cuánto llevamos gastado?"',
   };
 }
 
@@ -81,7 +79,7 @@ export function open() {
   const head = h(
     'div',
     { class: 'chat__head' },
-    h('div', { class: 'chat__title' }, 'Asistente'),
+    h('div', { class: 'chat__title' }, 'Papacito'),
     h('button', { class: 'nav-btn', onClick: () => overlay.remove() }, 'Listo')
   );
   const chips = h(
@@ -90,35 +88,61 @@ export function open() {
     ...SUGGESTIONS.map((s) => h('button', { class: 'chip', onClick: () => ask(s) }, s))
   );
   const listEl = h('div', { class: 'chat__list' });
-  const input = h('input', { type: 'text', placeholder: 'Pregúntame sobre tu viaje…', enterkeyhint: 'send' });
+  const input = h('input', { type: 'text', placeholder: 'Pregúntale a Papacito…', enterkeyhint: 'send' });
   const sendBtn = h('button', { class: 'nav-btn', 'aria-label': 'Enviar' }, icon('navegar', { size: 22, strokeWidth: 2 }));
   const inputBar = h('div', { class: 'chat__input' }, input, sendBtn);
 
   overlay.append(head, chips, listEl, inputBar);
   document.body.append(overlay);
 
-  const add = (role, text, google) => {
-    const el = h(
-      'div',
-      { class: 'msg msg--' + role },
-      h(
-        'div',
-        { class: 'msg__bubble' },
-        h('div', { class: 'msg__text' }, text),
-        google ? h('button', { class: 'msg__link', onClick: () => openExternal(searchUrl(google)) }, 'Buscar en Google') : null
-      )
-    );
+  function bubble(role, text) {
+    const wrap = h('div', { class: 'msg__bubble' });
+    const textEl = h('div', { class: 'msg__text' }, text);
+    wrap.append(textEl);
+    const el = h('div', { class: 'msg msg--' + role }, wrap);
     listEl.append(el);
-    listEl.scrollTop = listEl.scrollHeight;
-  };
+    const scroll = () => (listEl.scrollTop = listEl.scrollHeight);
+    scroll();
+    return {
+      setText: (t) => {
+        textEl.textContent = t;
+        scroll();
+      },
+      setSources: (sources) => {
+        const box = h(
+          'div',
+          { class: 'msg__sources' },
+          ...(sources || []).slice(0, 4).map((s) =>
+            h('a', { class: 'msg__source', href: s.uri, target: '_blank', rel: 'noopener' }, (s.title || s.uri).slice(0, 70))
+          )
+        );
+        wrap.append(box);
+        scroll();
+      },
+      setGoogle: (q) => {
+        wrap.append(h('button', { class: 'msg__link', onClick: () => openExternal(searchUrl(q)) }, 'Buscar en Google'));
+        scroll();
+      },
+    };
+  }
 
   const ask = (text) => {
     if (!text.trim()) return;
-    add('user', text);
-    setTimeout(() => {
-      const r = answer(text);
-      add('bot', r.text, r.google);
-    }, 250);
+    bubble('user', text);
+    const local = answer(text);
+    setTimeout(() => bubble('bot', local.text), 200);
+
+    setTimeout(async () => {
+      const loading = bubble('bot', 'Buscando en la web…');
+      try {
+        const r = await askWeb(text);
+        loading.setText(r.text || 'No obtuve resultados de la web.');
+        if (r.sources && r.sources.length) loading.setSources(r.sources);
+      } catch (e) {
+        loading.setText('No pude buscar en la web (' + (e.message || 'error') + ').');
+        loading.setGoogle(text);
+      }
+    }, 350);
   };
 
   sendBtn.addEventListener('click', () => {
@@ -132,6 +156,6 @@ export function open() {
     }
   });
 
-  add('bot', 'Hola, soy tu asistente de viaje. Pregúntame sobre lugares, comida, itinerario, gastos o equipaje.');
+  bubble('bot', 'Hola, soy Papacito, tu asistente de viaje. Pregúntame sobre lugares, comida, itinerario, gastos o equipaje.');
   setTimeout(() => input.focus(), 200);
 }

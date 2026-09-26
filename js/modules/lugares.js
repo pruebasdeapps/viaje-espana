@@ -2,7 +2,8 @@ import { h, openForm, confirmDialog, toast, attachContextMenu } from '../ui.js';
 import { list as storeList, save, remove } from '../store.js';
 import { get as getSetting } from '../settings.js';
 import { CITY_COUNTRY, CITY_ORDER } from '../geo.js';
-import { section, row, list, empty, stars, placeActions, mapButton } from './common.js';
+import { section, row, list, empty, stars, placeActions } from './common.js';
+import { mapUrl, openExternal } from '../platform.js';
 
 export const meta = { key: 'lugares', label: 'Lugares', icon: 'lugares' };
 
@@ -53,7 +54,8 @@ export function create() {
     title: 'Nuevo lugar',
     fields: FIELDS(),
     onSubmit: async (data) => {
-      await save('lugares', data);
+      const maps_url = mapUrl({ nombre: data.nombre, ciudad: data.ciudad, direccion: data.direccion, lat: data.lat, lng: data.lng });
+      await save('lugares', { ...data, maps_url });
       toast('Lugar guardado', 'success');
     },
   });
@@ -65,7 +67,8 @@ function edit(item) {
     values: item,
     fields: FIELDS(),
     onSubmit: async (data) => {
-      await save('lugares', data);
+      const maps_url = mapUrl({ nombre: data.nombre, ciudad: data.ciudad, direccion: data.direccion, lat: data.lat, lng: data.lng });
+      await save('lugares', { ...data, maps_url });
       toast('Lugar guardado', 'success');
     },
   });
@@ -162,13 +165,14 @@ export function render() {
           title: l.nombre,
           sub: [l.categoria, l.direccion].filter(Boolean).join(' · ') || null,
           note: l.nota || null,
-          accessory: h('span', { class: 'row__accessory' }, mapButton(l), stars(l.rating)),
+          accessory: h('span', { class: 'row__accessory' }, stars(l.rating)),
           wrap: true,
-          onClick: () => edit(l),
+          onClick: () => openExternal(mapUrl(l)),
         });
         attachContextMenu(r, () =>
           placeActions(l, {
             extra: [
+              { label: 'Copiar enlace de Maps', onClick: async () => { try { await navigator.clipboard.writeText(l.maps_url || mapUrl(l)); toast('Enlace copiado', 'success'); } catch (_) { toast('No se pudo copiar', 'error'); } } },
               l.url ? { label: 'Abrir enlace', onClick: () => window.open(l.url, '_blank') } : null,
               { label: 'Editar', onClick: () => edit(l) },
               { label: 'Eliminar', danger: true, onClick: () => removeItem(l) },
