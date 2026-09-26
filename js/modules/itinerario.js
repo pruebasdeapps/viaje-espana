@@ -3,6 +3,7 @@ import { list as storeList, save, remove } from '../store.js';
 import { get as getSetting, set as setSetting } from '../settings.js';
 import { section, row, list, empty, placeActions, switchEl, mapButton } from './common.js';
 import { icon } from '../ui.js';
+import { forecast, coordsForCity, cityForDay } from '../weather.js';
 
 export const meta = { key: 'itinerario', label: 'Itinerario', icon: 'calendario' };
 
@@ -147,11 +148,22 @@ function dayBlock(fecha, listItems, startOpen) {
   const open = startOpen || isExpanded(fecha);
   if (open) body.classList.add('day-body--open');
 
+  const wx = h('span', { class: 'day-head__wx' });
+  const c = coordsForCity(cityForDay(fecha));
+  if (c) {
+    forecast(c.lat, c.lng, fecha)
+      .then((w) => {
+        if (w) wx.replaceChildren(icon(w.ico, { size: 17, strokeWidth: 1.8 }), h('span', {}, Math.round(w.tmax) + '°'));
+      })
+      .catch(() => {});
+  }
+
   const head = h(
     'div',
     { class: 'day-head' + (open ? ' day-head--open' : '') },
     h('span', { class: 'day-head__chev' }, icon('chevron', { size: 16, strokeWidth: 2.4 })),
     h('span', { class: 'day-head__date' }, fmtDate(fecha)),
+    wx,
     h('span', { class: 'day-head__sum' }, `${doneCount}/${listItems.length}`)
   );
   head.addEventListener('click', () => {

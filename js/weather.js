@@ -1,6 +1,18 @@
 import { list as storeList } from './store.js';
+import { CITY_COUNTRY } from './geo.js';
 
 const CACHE_MS = 3 * 60 * 60 * 1000;
+const STATIC_COORDS = {
+  Lima: { lat: -12.0464, lng: -77.0428 },
+  Madrid: { lat: 40.4168, lng: -3.7038 },
+  Toledo: { lat: 39.8628, lng: -4.0273 },
+  Roma: { lat: 41.9028, lng: 12.4964 },
+  Pisa: { lat: 43.7228, lng: 10.4017 },
+  Florencia: { lat: 43.7696, lng: 11.2558 },
+  'París': { lat: 48.8566, lng: 2.3522 },
+  Barcelona: { lat: 41.3874, lng: 2.1686 },
+  Granada: { lat: 37.1773, lng: -3.5986 },
+};
 const CODE = {
   0: ['Despejado', 'sol'],
   1: ['Mayormente despejado', 'sol'],
@@ -48,7 +60,45 @@ function cacheSet(key, d) {
 export function coordsForCity(ciudad) {
   if (!ciudad) return null;
   const l = storeList('lugares').find((x) => x.ciudad === ciudad && x.lat && x.lng);
-  return l ? { lat: l.lat, lng: l.lng } : null;
+  if (l) return { lat: l.lat, lng: l.lng };
+  return STATIC_COORDS[ciudad] || null;
+}
+
+function minutesOf(hora) {
+  if (!hora) return 0;
+  const [hh, mm] = hora.split(':').map(Number);
+  return (hh || 0) * 60 + (mm || 0);
+}
+
+function cityFromItinerario(fecha) {
+  const acts = storeList('itinerario').filter((i) => i.fecha === fecha);
+  for (const a of acts) {
+    const text = (a.lugar || '') + ' ' + (a.direccion || '');
+    for (const city of Object.keys(CITY_COUNTRY)) if (text.includes(city)) return city;
+  }
+  return null;
+}
+
+function coveringHospedajes(fecha) {
+  return storeList('hospedajes').filter((h) => h.fecha_in && h.fecha_out && h.fecha_in <= fecha && h.fecha_out >= fecha);
+}
+
+export function cityForMoment(fecha, nowMin) {
+  const hosp = coveringHospedajes(fecha);
+  if (!hosp.length) return cityFromItinerario(fecha);
+  if (hosp.length === 1) return hosp[0].ciudad;
+  const outCity = hosp.reduce((a, b) => (a.fecha_out <= b.fecha_out ? a : b));
+  const inCity = hosp.reduce((a, b) => (a.fecha_in >= b.fecha_in ? a : b));
+  const vuelo = storeList('documentos').find((d) => d.tipo === 'Vuelo' && d.fecha === fecha && d.hora);
+  if (vuelo && vuelo.hora) return nowMin < minutesOf(vuelo.hora) ? outCity.ciudad : inCity.ciudad;
+  return inCity.ciudad;
+}
+
+export function cityForDay(fecha) {
+  const hosp = coveringHospedajes(fecha);
+  if (!hosp.length) return cityFromItinerario(fecha);
+  if (hosp.length === 1) return hosp[0].ciudad;
+  return hosp.reduce((a, b) => (a.fecha_in >= b.fecha_in ? a : b)).ciudad;
 }
 
 export async function forecast(lat, lng, fecha) {

@@ -6,7 +6,7 @@ import { create as addActividad, openDay } from './itinerario.js';
 import { create as addGasto, toBase, paidByPerson } from './gastos.js';
 import { create as addLugar } from './lugares.js';
 import { openArchivo, archivoLabel } from './documentos.js';
-import { forecast, coordsForCity } from '../weather.js';
+import { forecast, coordsForCity, cityForMoment } from '../weather.js';
 import { CITY_COUNTRY } from '../geo.js';
 import { open as openAsistente } from './asistente.js';
 
@@ -213,9 +213,8 @@ export function render() {
   const checklist = storeList('checklist');
   const entradasHoy = storeList('documentos').filter((d) => d.fecha === hoy);
 
-  const refAct = deHoy[0] || proximas[0] || null;
-  const ciudad = cityFromText(refAct && refAct.lugar) || cityFromText(refAct && refAct.direccion);
-  const climaFecha = deHoy.length ? hoy : proximas[0] ? proximas[0].fecha : hoy;
+  const ciudad = phase === 'during' ? cityForMoment(hoy, nowMin) : 'Lima';
+  const climaFecha = hoy;
 
   const fragment = h('div', {});
 
