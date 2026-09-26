@@ -1,5 +1,5 @@
 import { CONFIG, SYNC_ENABLED } from './config.js';
-import { applyRemote, allLocal, setSyncHook, getVersion } from './store.js';
+import { applyRemote, allLocal, setSyncHook, getVersion, dedupeLocal } from './store.js';
 import { get as getSetting } from './settings.js';
 import { toast } from './ui.js';
 
@@ -146,6 +146,7 @@ export async function pull() {
       deleted: row.deleted,
     }));
     await applyRemote(remote);
+    await dedupeLocal();
     setStatus({ state: 'ok', message: 'Sincronizado', last: new Date() });
     return true;
   } catch (e) {
