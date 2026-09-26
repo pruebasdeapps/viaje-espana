@@ -3,7 +3,7 @@ import { initStore, subscribe } from './store.js';
 import { get as getSetting, subscribe as onSetting } from './settings.js';
 import { initSync, onStatus, currentUser, syncNow, login, signup } from './sync.js';
 import { persistStorage } from './db.js';
-import { h, clear, toast, icon } from './ui.js';
+import { h, clear, toast, icon, ensurePerson } from './ui.js';
 
 import * as hoy from './modules/hoy.js';
 import * as itinerario from './modules/itinerario.js';
@@ -157,6 +157,7 @@ function showApp() {
   renderTabbar();
   renderAppbar();
   renderView();
+  ensurePerson();
 }
 
 function renderLoginGate() {

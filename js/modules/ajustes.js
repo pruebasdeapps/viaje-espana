@@ -1,4 +1,4 @@
-import { h, openSheet, confirmDialog, toast, closeSheet, actionSheet, openForm, fmtDate } from '../ui.js';
+import { h, openSheet, confirmDialog, toast, closeSheet, actionSheet, openForm, fmtDate, ensurePerson } from '../ui.js';
 import { CONFIG, SYNC_ENABLED } from '../config.js';
 import { get, set, setRate, all as settingsAll } from '../settings.js';
 import { exportJSON, importJSON, resetAll, list as storeList } from '../store.js';
@@ -196,6 +196,7 @@ function openAuth() {
       closeSheet();
       await syncNow();
       refresh();
+      ensurePerson();
     } catch (e) {
       toast(e.message, 'error');
     }
@@ -206,6 +207,7 @@ function openAuth() {
       toast('Cuenta creada', 'success');
       closeSheet();
       refresh();
+      ensurePerson();
     } catch (e) {
       toast(e.message, 'error');
     }
@@ -373,6 +375,14 @@ export function render() {
           detail: String((get('people') || []).length),
           chevron: true,
           onClick: openPeopleSheet,
+        }),
+        pickerRow({
+          iconName: 'persona',
+          iconColor: 'tint',
+          title: 'Tú eres',
+          value: get('currentPerson') || '',
+          options: [{ value: '', label: 'Sin asignar' }, ...(get('people') || []).map((p) => ({ value: p, label: p }))],
+          onChange: (v) => set('currentPerson', v),
         })
       )
     )

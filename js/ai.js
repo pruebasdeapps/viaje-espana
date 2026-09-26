@@ -11,28 +11,31 @@ async function loadKey() {
   return key;
 }
 
-async function callGemini(body) {
+async function chat(messages) {
   const k = await loadKey();
-  if (!k) throw new Error('Configura la clave de Gemini en js/ai.local.js');
+  if (!k) throw new Error('Configura la clave de DeepSeek en js/ai.local.js');
 
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=' + encodeURIComponent(k);
+  const url = 'https://api.deepseek.com/chat/completions';
   let res;
   for (let attempt = 0; attempt < 3; attempt++) {
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + k },
+      body: JSON.stringify({ model: 'deepseek-chat', messages, temperature: 0.4, stream: false }),
     });
     if (res.ok || (res.status !== 429 && res.status !== 503 && res.status < 500)) break;
     await new Promise((r) => setTimeout(r, 1200));
   }
-  if (!res.ok) throw new Error('Error de Gemini: HTTP ' + res.status);
-  return res.json();
+  if (!res.ok) throw new Error('Error de DeepSeek: HTTP ' + res.status);
+  const data = await res.json();
+  return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
 }
 
-function extractText(data) {
-  const parts = (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
-  return parts.map((p) => p.text).filter(Boolean).join('\n').trim();
+export async function askChat(query) {
+  return chat([
+    { role: 'system', content: 'Eres "Papacito", un asistente de viajes amable, breve y útil. Respondes en español.' },
+    { role: 'user', content: query },
+  ]);
 }
 
 export async function suggestChecklist(context) {
@@ -43,12 +46,15 @@ export async function suggestChecklist(context) {
     (context.have || 'nada') +
     '. Sugiere 8 ítems concretos de equipaje que falten (ropa por capas, calzado cómodo, documentos, tecnología, salud, abrigo impermeable). Responde SOLO una lista JSON de strings, por ejemplo: ["item1","item2"].';
 
-  const data = await callGemini({ contents: [{ parts: [{ text: prompt }] }] });
-  const text = extractText(data);
+  const text = await chat([
+    { role: 'system', content: 'Respondes únicamente con JSON válido.' },
+    { role: 'user', content: prompt },
+  ]);
   const match = text.match(/\[[\s\S]*\]/);
   if (match) {
     try {
-      return JSON.parse(match[0]);
+      const arr = JSON.parse(match[0]);
+      if (Array.isArray(arr)) return arr;
     } catch (_) {
       /* seguir al fallback */
     }
@@ -57,18 +63,4 @@ export async function suggestChecklist(context) {
     .split('\n')
     .map((s) => s.replace(/^\d+[.)]\s*/, '').replace(/^-\s*/, '').replace(/^["']|["']$/g, '').trim())
     .filter(Boolean);
-}
-
-export async function askWeb(query) {
-  const data = await callGemini({
-    contents: [{ parts: [{ text: query }] }],
-    tools: [{ googleSearch: {} }],
-  });
-  const text = extractText(data);
-  const gm = (data && data.candidates && data.candidates[0] && data.candidates[0].groundingMetadata) || {};
-  const sources = (gm.groundingChunks || [])
-    .filter((c) => c && c.web && c.web.uri)
-    .map((c) => ({ title: c.web.title || c.web.uri, uri: c.web.uri }))
-    .slice(0, 4);
-  return { text, sources };
 }

@@ -4,7 +4,7 @@ import { get as getSetting, all as settingsAll } from '../settings.js';
 import { searchUrl, openExternal } from '../platform.js';
 import { CITY_COUNTRY } from '../geo.js';
 import { toBase } from './gastos.js';
-import { askWeb } from '../ai.js';
+import { askChat } from '../ai.js';
 
 export const meta = { key: 'asistente', label: 'Papacito', icon: 'info' };
 
@@ -133,13 +133,13 @@ export function open() {
     setTimeout(() => bubble('bot', local.text), 200);
 
     setTimeout(async () => {
-      const loading = bubble('bot', 'Buscando en la web…');
+      const loading = bubble('bot', 'Consultando…');
       try {
-        const r = await askWeb(text);
-        loading.setText(r.text || 'No obtuve resultados de la web.');
-        if (r.sources && r.sources.length) loading.setSources(r.sources);
+        const r = await askChat(text);
+        loading.setText(r || 'No obtuve respuesta.');
+        loading.setGoogle(text);
       } catch (e) {
-        loading.setText('No pude buscar en la web (' + (e.message || 'error') + ').');
+        loading.setText('No pude consultar la IA (' + (e.message || 'error') + ').');
         loading.setGoogle(text);
       }
     }, 350);

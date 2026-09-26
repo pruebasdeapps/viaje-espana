@@ -74,7 +74,7 @@ function fieldsFor(items) {
 export function create() {
   openForm({
     title: 'Nuevo gasto',
-    values: { fecha: todayISO(), moneda: baseCurrency() },
+    values: { fecha: todayISO(), moneda: baseCurrency(), pagado_por: getSetting('currentPerson') || '' },
     fields: fieldsFor(storeList('gastos')),
     onSubmit: async (data) => {
       await save('gastos', data);

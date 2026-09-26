@@ -1,4 +1,5 @@
 import { icon } from './icons.js';
+import { get as getSetting, set as setSetting } from './settings.js';
 
 export { icon };
 
@@ -426,4 +427,32 @@ export function openDocViewer(blob, { type = 'pdf', nombre = '' } = {}) {
   overlay.append(head, content);
   document.body.append(overlay);
   return overlay;
+}
+
+export function currentPerson() {
+  return getSetting('currentPerson') || '';
+}
+
+export function ensurePerson(onDone) {
+  const current = getSetting('currentPerson');
+  const people = getSetting('people') || [];
+  if (current) {
+    if (onDone) onDone(current);
+    return;
+  }
+  if (!people.length) {
+    if (onDone) onDone(null);
+    return;
+  }
+  actionSheet({
+    title: '¿Quién eres?',
+    items: people.map((p) => ({
+      label: p,
+      onClick: () => {
+        setSetting('currentPerson', p);
+        toast('Hola, ' + p, 'success');
+        if (onDone) onDone(p);
+      },
+    })),
+  });
 }
