@@ -1,0 +1,25 @@
+{
+  "name": "Viaje a España",
+  "short_name": "Viaje",
+  "description": "Planificador de viaje offline: itinerario, gastos, equipaje, lugares, reservas y diario.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#f4f6fb",
+  "theme_color": "#0b3d91",
+  "categories": ["travel", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Itinerario", "url": "./index.html#/itinerario" },
+    { "name": "Gastos", "url": "./index.html#/gastos" },
+    { "name": "Lugares", "url": "./index.html#/lugares" }
+  ]
+}
