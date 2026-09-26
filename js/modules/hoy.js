@@ -5,10 +5,9 @@ import { section, row, list, barChart } from './common.js';
 import { create as addActividad, openDay } from './itinerario.js';
 import { create as addGasto, toBase, paidByPerson } from './gastos.js';
 import { create as addLugar } from './lugares.js';
-import { openArchivo, archivoLabel } from './documentos.js';
+import { openArchivo, archivoLabel, openEntradas } from './documentos.js';
 import { forecast, coordsForCity, cityForMoment } from '../weather.js';
 import { CITY_COUNTRY } from '../geo.js';
-import { open as openAsistente } from './asistente.js';
 
 export const meta = { key: 'hoy', label: 'Hoy', icon: 'sol' };
 
@@ -66,9 +65,8 @@ function quickActions() {
     { ic: 'calendario', lb: 'Actividad', fn: addActividad },
     { ic: 'euro', lb: 'Gasto', fn: addGasto },
     { ic: 'lugares', lb: 'Lugar', fn: addLugar },
-    { ic: 'documentos', lb: 'Entradas', fn: () => (location.hash = '#/documentos') },
+    { ic: 'documentos', lb: 'Entradas', fn: openEntradas },
     { ic: 'maleta', lb: 'Equipaje', fn: () => (location.hash = '#/checklist') },
-    { ic: 'carita', lb: 'Papacito', fn: openAsistente },
   ];
   return h(
     'div',
@@ -211,7 +209,7 @@ export function render() {
 
   const gastos = storeList('gastos');
   const checklist = storeList('checklist');
-  const entradasHoy = storeList('documentos').filter((d) => d.fecha === hoy);
+  const entradasHoy = storeList('documentos').filter((d) => d.fecha === hoy && d.tipo === 'Entrada');
 
   const ciudad = phase === 'during' ? cityForMoment(hoy, nowMin) : 'Lima';
   const climaFecha = hoy;
