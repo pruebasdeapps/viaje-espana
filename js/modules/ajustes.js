@@ -1,7 +1,7 @@
 import { h, openSheet, confirmDialog, toast, closeSheet, actionSheet, openForm, fmtDate, ensurePerson } from '../ui.js';
 import { CONFIG, SYNC_ENABLED } from '../config.js';
 import { get, set, setRate, all as settingsAll } from '../settings.js';
-import { exportJSON, importJSON, resetAll, list as storeList } from '../store.js';
+import { exportJSON, importJSON, resetAll, list as storeList, dedupeLocal } from '../store.js';
 import { login, signup, logout, currentUser, onStatus, syncNow } from '../sync.js';
 import { icsExport } from '../platform.js';
 import { section, row, list } from './common.js';
@@ -588,6 +588,17 @@ export function render() {
           },
         }),
         row({ iconName: 'importar', iconColor: 'indigo', title: 'Importar datos', onClick: () => fileInput.click() }),
+        row({
+          iconName: 'tache',
+          iconColor: 'orange',
+          title: 'Limpiar duplicados',
+          sub: 'Quita copias repetidas del itinerario y listas',
+          onClick: async () => {
+            const n = await dedupeLocal();
+            toast(n > 0 ? 'Duplicados quitados: ' + n : 'No hay duplicados', n > 0 ? 'success' : 'info');
+            refresh();
+          },
+        }),
         row({ iconName: 'nube', iconColor: 'teal', title: 'Almacenamiento', chevron: true, onClick: openStorage }),
         fileInput
       ),

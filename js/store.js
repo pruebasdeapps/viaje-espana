@@ -50,15 +50,76 @@ function notify(item) {
   }
 }
 
+function hashStr(str) {
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < str.length; i++) {
+    h1 = Math.imul(h1 ^ str.charCodeAt(i), 16777619) >>> 0;
+    h2 = Math.imul(h2 + str.charCodeAt(i), 2246822519) >>> 0;
+  }
+  return (h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')).repeat(2).slice(0, 32);
+}
+
+function stableId(raw) {
+  const key = [raw.collection || '', raw.titulo || raw.nombre || '', raw.fecha || raw.fecha_in || '', raw.hora || '', raw.lugar || raw.ciudad || ''].join('|');
+  const hex = hashStr(key);
+  return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-' + hex.slice(12, 16) + '-' + hex.slice(16, 20) + '-' + hex.slice(20, 32);
+}
+
 function normalize(raw) {
   const now = new Date().toISOString();
   return {
-    id: raw.id || uid(),
+    id: raw.id || stableId(raw),
     created_at: raw.created_at || now,
     updated_at: raw.updated_at || now,
     deleted: false,
     ...raw,
   };
+}
+
+const DEDUPE_KEYS = {
+  itinerario: (x) => [x.fecha, x.hora, x.titulo, x.lugar].join('|'),
+  lugares: (x) => [x.nombre, x.ciudad].join('|'),
+  hospedajes: (x) => [x.nombre, x.fecha_in].join('|'),
+  checklist: (x) => [x.titulo, x.categoria].join('|'),
+  enlaces: (x) => [x.titulo, x.url].join('|'),
+  notas: (x) => [x.fecha, x.titulo].join('|'),
+  documentos: (x) => [x.tipo, x.titulo, x.fecha].join('|'),
+};
+
+let lastDedupeCount = 0;
+export function getDedupeCount() {
+  return lastDedupeCount;
+}
+
+export async function dedupeLocal() {
+  const groups = new Map();
+  for (const item of cache.values()) {
+    if (item.deleted) continue;
+    const keyFn = DEDUPE_KEYS[item.collection];
+    if (!keyFn) continue;
+    const k = item.collection + '|' + keyFn(item);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(item);
+  }
+  const removed = [];
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    list.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+    for (let i = 1; i < list.length; i++) {
+      const del = { ...list[i], deleted: true, updated_at: new Date().toISOString() };
+      cache.set(del.id, del);
+      await putItem(del);
+      removed.push(del);
+    }
+  }
+  lastDedupeCount = removed.length;
+  if (removed.length) {
+    bump();
+    for (const it of removed) notify(it);
+    emit();
+  }
+  return removed.length;
 }
 
 async function seed(data) {
@@ -76,6 +137,7 @@ export async function initStore() {
     const data = await loadSeed();
     if (data.length) await seed(data);
   }
+  await dedupeLocal();
   emit();
 }
 

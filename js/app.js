@@ -1,5 +1,5 @@
 import { CONFIG, SYNC_ENABLED } from './config.js';
-import { initStore, subscribe } from './store.js';
+import { initStore, subscribe, getDedupeCount } from './store.js';
 import { get as getSetting, subscribe as onSetting } from './settings.js';
 import { initSync, onStatus, currentUser, syncNow, login, signup } from './sync.js';
 import { persistStorage } from './db.js';
@@ -326,6 +326,9 @@ async function boot() {
   persistStorage();
   await initStore();
   initSync();
+
+  const deduped = getDedupeCount();
+  if (deduped > 0) toast('Duplicados limpiados: ' + deduped, 'success');
 
   applyTheme();
   onSetting(() => applyTheme());
