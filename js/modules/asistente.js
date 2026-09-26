@@ -5,7 +5,8 @@ import { searchUrl, openExternal, mapUrl, mapsSearchUrl } from '../platform.js';
 import { CITY_COUNTRY } from '../geo.js';
 import { toBase } from './gastos.js';
 import { askChat } from '../ai.js';
-import { searchPlaces } from '../search.js';
+import { searchPlaces, searchOverpass } from '../search.js';
+import { coordsForCity } from '../weather.js';
 
 export const meta = { key: 'asistente', label: 'Papacito', icon: 'info' };
 
@@ -24,6 +25,34 @@ function searchQueryFor(text) {
   if (city && /(ver|visitar|atraccion|museo|turismo|que hacer|monumento)/.test(q)) return 'atracciones turísticas ' + city;
   if (city) return city + ' ' + text.replace(/[¿?¡!]/g, '').replace(city, '').trim();
   return text.replace(/[¿?¡!]/g, '').trim();
+}
+
+const CATS = [
+  { re: /(restaurant|comer|cenar|almorzar|comida|carbonara|pasta|pizza|trattoria|ristorante|tapa)/, tag: ['amenity', 'restaurant'] },
+  { re: /(bar|copas|cerveza|birra)/, tag: ['amenity', 'bar'] },
+  { re: /(caf[eé]|desayuno|brunch)/, tag: ['amenity', 'cafe'] },
+  { re: /(museo|museum)/, tag: ['tourism', 'museum'] },
+  { re: /(hotel|hostal|hostel|alojamiento)/, tag: ['tourism', 'hotel'] },
+  { re: /(supermercado|mercado|supermarket)/, tag: ['shop', 'supermarket'] },
+  { re: /(farmacia|pharmacy)/, tag: ['amenity', 'pharmacy'] },
+  { re: /(monumento|atracci[oó]n|tur[ií]stico|visitar)/, tag: ['tourism', 'attraction'] },
+];
+
+function categoryTag(text) {
+  const q = text.toLowerCase();
+  for (const c of CATS) if (c.re.test(q)) return c.tag;
+  return null;
+}
+
+async function findPlaces(text) {
+  const city = findCity(text);
+  const tag = categoryTag(text);
+  const coords = city ? coordsForCity(city) : null;
+  if (tag && coords) {
+    const list = await searchOverpass(tag[0], tag[1], coords.lat, coords.lng);
+    if (list.length) return list;
+  }
+  return searchPlaces(searchQueryFor(text));
 }
 
 function placesList(title, places) {
@@ -176,11 +205,10 @@ export function open() {
 
     setTimeout(async () => {
       try {
-        const query = searchQueryFor(text);
-        const results = await searchPlaces(query);
+        const results = await findPlaces(text);
         const m = bubble('bot', results.length ? 'Sitios encontrados (toca para ir en Maps):' : 'Búscalo en el mapa:');
         if (results.length) m.setResults(results);
-        m.setMaps(query);
+        m.setMaps(searchQueryFor(text));
       } catch (_) {
         /* sin resultados */
       }

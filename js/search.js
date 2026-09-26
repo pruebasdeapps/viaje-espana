@@ -51,3 +51,37 @@ export async function searchPlaces(query) {
   }
   return [];
 }
+
+// Búsqueda por categoría alrededor de una ciudad (Overpass / OpenStreetMap), sin clave ni nota.
+export async function searchOverpass(tagKey, tagValue, lat, lng, radius = 6000) {
+  if (lat == null || lng == null) return [];
+  const q = `[out:json][timeout:25];node["${tagKey}"="${tagValue}"](around:${radius},${lat},${lng});out body 60;`;
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(q),
+    });
+    if (!res.ok) return [];
+    const j = await res.json();
+    const seen = new Set();
+    const out = [];
+    for (const e of j.elements || []) {
+      const t = e.tags || {};
+      if (!t.name) continue;
+      const key = t.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        name: t.name,
+        address: [t['addr:street'], t['addr:housenumber'], t['addr:city']].filter(Boolean).join(' '),
+        lat: e.lat,
+        lng: e.lon,
+      });
+      if (out.length >= 12) break;
+    }
+    return out;
+  } catch (_) {
+    return [];
+  }
+}
