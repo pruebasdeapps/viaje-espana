@@ -6,6 +6,8 @@ desktop.ini
 .vscode/
 .idea/
 node_modules/
+supabase/.temp/
+supabase/.branches/
 
 # Datos personales / sensibles (NO subir al repositorio)
 js/seed.local.js
