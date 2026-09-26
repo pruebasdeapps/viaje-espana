@@ -147,3 +147,12 @@ export function mapButton(lugar) {
     icon('navegar', { size: 20, strokeWidth: 1.9 })
   );
 }
+
+export function switchEl(checked, onChange) {
+  return h(
+    'label',
+    { class: 'switch', onClick: (e) => e.stopPropagation() },
+    h('input', { type: 'checkbox', checked: !!checked, onChange: (e) => onChange(e.target.checked) }),
+    h('span', {})
+  );
+}

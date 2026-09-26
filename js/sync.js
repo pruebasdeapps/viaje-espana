@@ -1,5 +1,5 @@
 import { CONFIG, SYNC_ENABLED } from './config.js';
-import { applyRemote, allLocal, setSyncHook } from './store.js';
+import { applyRemote, allLocal, setSyncHook, getVersion } from './store.js';
 import { get as getSetting } from './settings.js';
 import { toast } from './ui.js';
 
@@ -8,6 +8,7 @@ const listeners = new Set();
 let status = { state: SYNC_ENABLED ? 'idle' : 'disabled', last: null, message: '' };
 let pushing = false;
 let pushTimer = null;
+let lastPushedVersion = 0;
 
 function baseUrl() {
   return CONFIG.supabaseUrl.replace(/\/$/, '');
@@ -204,6 +205,7 @@ export async function pushAll() {
       });
     }
     setStatus({ state: 'ok', message: 'Sincronizado', last: new Date() });
+    lastPushedVersion = getVersion();
   } catch (e) {
     setStatus({ state: 'error', message: e.message });
   } finally {
@@ -233,6 +235,13 @@ export function initSync() {
   }
   addEventListener('online', () => {
     if (currentUser() && getSetting('autoSync') && networkAllowed()) pull();
+    if (currentUser() && getSetting('autoSync') && networkAllowed()) pushAll();
   });
   if (currentUser()) pull();
+
+  setInterval(() => {
+    if (!SYNC_ENABLED || !currentUser() || !getSetting('autoSync') || !networkAllowed()) return;
+    if (getVersion() <= lastPushedVersion) return;
+    pushAll();
+  }, 5000);
 }

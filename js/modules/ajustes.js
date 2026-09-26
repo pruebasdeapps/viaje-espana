@@ -103,27 +103,28 @@ function dateRow({ iconName, iconColor, title, value, onSave }) {
   });
 }
 
-function openPeopleSheet() {
-  let names = [...(get('people') || [])];
+function openListEditor(key, title, addPlaceholder = 'Nuevo') {
+  let items = [...(get(key) || [])];
   const build = () => {
-    const rows = names.map((name, i) => {
-      const input = h('input', { type: 'text', value: name, onInput: (e) => { names[i] = e.target.value; } });
-      const del = h('button', { class: 'icon-btn', title: 'Quitar', onClick: () => { names.splice(i, 1); set('people', [...names]); rebuild(); } }, '✕');
+    if (!items.length) return h('p', { class: 'section__footer' }, 'Sin elementos todavía.');
+    const rows = items.map((name, i) => {
+      const input = h('input', { type: 'text', value: name, onInput: (e) => { items[i] = e.target.value; } });
+      const del = h('button', { class: 'icon-btn', title: 'Quitar', onClick: () => { items.splice(i, 1); set(key, [...items]); rebuild(); } }, '✕');
       return h('div', { class: 'field' }, input, del);
     });
-    return h('div', {}, rows.length ? list(...rows) : h('p', { class: 'section__footer' }, 'Sin personas todavía.'));
+    return list(...rows);
   };
   const body = h('div', {});
   const listWrap = h('div', {});
   listWrap.append(build());
   body.append(listWrap);
-  const addInput = h('input', { type: 'text', placeholder: 'Nuevo nombre' });
-  const addBtn = h('button', { class: 'btn btn--block' }, '+ Añadir persona');
+  const addInput = h('input', { type: 'text', placeholder: addPlaceholder });
+  const addBtn = h('button', { class: 'btn btn--block' }, '+ Añadir');
   addBtn.addEventListener('click', () => {
     const v = addInput.value.trim();
     if (v) {
-      names.push(v);
-      set('people', [...names]);
+      items.push(v);
+      set(key, [...items]);
       addInput.value = '';
       listWrap.replaceChildren(build());
     }
@@ -131,11 +132,15 @@ function openPeopleSheet() {
   body.append(h('div', { class: 'row-actions', style: { marginTop: '14px' } }, addBtn), h('div', { style: { marginTop: '8px' } }, addInput));
   const done = h('button', { class: 'nav-btn' }, 'Listo');
   done.addEventListener('click', () => {
-    set('people', names.filter(Boolean));
+    set(key, items.filter(Boolean));
     closeSheet();
     refresh();
   });
-  openSheet({ title: 'Personas del grupo', body, leading: h('button', { class: 'nav-btn', onClick: () => { closeSheet(); refresh(); } }, 'Cancelar'), trailing: done });
+  openSheet({ title, body, leading: h('button', { class: 'nav-btn', onClick: () => { closeSheet(); refresh(); } }, 'Cancelar'), trailing: done });
+}
+
+function openPeopleSheet() {
+  openListEditor('people', 'Personas del grupo', 'Nuevo nombre');
 }
 
 function openRatesSheet() {
@@ -368,6 +373,49 @@ export function render() {
           detail: String((get('people') || []).length),
           chevron: true,
           onClick: openPeopleSheet,
+        })
+      )
+    )
+  );
+
+  fragment.append(
+    section(
+      'Gastos',
+      list(
+        row({
+          iconName: 'gastos',
+          iconColor: 'pink',
+          title: 'Tipos de gasto',
+          sub: 'Transporte, Comida, Entradas…',
+          detail: String((get('gastoCategories') || []).length),
+          chevron: true,
+          onClick: () => openListEditor('gastoCategories', 'Tipos de gasto'),
+        }),
+        row({
+          iconName: 'gastos',
+          iconColor: 'teal',
+          title: 'Métodos de pago',
+          sub: 'Efectivo, Tarjeta, Bizum…',
+          detail: String((get('metodos') || []).length),
+          chevron: true,
+          onClick: () => openListEditor('metodos', 'Métodos de pago'),
+        })
+      )
+    )
+  );
+
+  fragment.append(
+    section(
+      'Ruta',
+      list(
+        row({
+          iconName: 'mapa',
+          iconColor: 'indigo',
+          title: 'Orden de países',
+          sub: 'España, Italia, Francia…',
+          detail: String((get('countryOrder') || []).length),
+          chevron: true,
+          onClick: () => openListEditor('countryOrder', 'Orden de países'),
         })
       )
     )

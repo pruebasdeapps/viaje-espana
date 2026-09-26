@@ -1,6 +1,7 @@
-import { h, openForm, confirmDialog, toast, attachContextMenu } from '../ui.js';
+import { h, openForm, confirmDialog, toast, attachContextMenu, openSheet, closeSheet } from '../ui.js';
 import { list as storeList, save, remove } from '../store.js';
 import { section, row, list, empty } from './common.js';
+import { suggestChecklist } from '../ai.js';
 
 export const meta = { key: 'checklist', label: 'Equipaje', icon: 'maleta' };
 
@@ -72,6 +73,38 @@ export function primaryAction() {
   return { icon: 'plus', label: 'Añadir ítem', onClick: create };
 }
 
+async function suggest() {
+  const have = storeList('checklist').map((c) => c.titulo).join(', ');
+  const cities = [...new Set(storeList('lugares').map((l) => l.ciudad).filter(Boolean))].slice(0, 8).join(', ') || 'España, Italia, Francia';
+  toast('Generando sugerencias…');
+  try {
+    const items = await suggestChecklist({ cities, have });
+    if (!items.length) throw new Error('No se obtuvieron sugerencias');
+    showSuggestions(items);
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function showSuggestions(items) {
+  const listEl = h('div', { class: 'list' });
+  items.forEach((sug) => {
+    const r = row({
+      iconName: 'plus',
+      iconColor: 'green',
+      title: sug,
+      onClick: async () => {
+        await save('checklist', { titulo: sug, categoria: 'Otros', hecho: false });
+        toast('Añadido al equipaje', 'success');
+        r.querySelector('.row__title').textContent = '✓ ' + sug;
+        r.querySelector('.row__title').style.textDecoration = 'line-through';
+      },
+    });
+    listEl.append(r);
+  });
+  openSheet({ title: 'Sugerencias de equipaje', body: h('div', {}, listEl), leading: h('button', { class: 'nav-btn', onClick: closeSheet }, 'Listo') });
+}
+
 export function subtitle() {
   const items = storeList('checklist');
   const done = items.filter((i) => i.hecho).length;
@@ -91,9 +124,16 @@ export function render() {
   fragment.append(
     h(
       'div',
-      { class: 'progress', style: { marginBottom: '22px' } },
+      { class: 'progress', style: { marginBottom: '14px' } },
       h('div', { class: 'progress__bar' }, h('span', { style: { width: pct + '%' } })),
       h('span', { class: 'progress__label' }, done + ' de ' + items.length + ' listos (' + pct + '%)')
+    )
+  );
+
+  fragment.append(
+    section(
+      null,
+      list(row({ iconName: 'info', iconColor: 'tint', title: 'Sugerir con IA', sub: 'Recomendaciones según tu viaje', chevron: true, onClick: suggest }))
     )
   );
 

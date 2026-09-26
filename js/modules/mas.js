@@ -3,6 +3,7 @@ import { list as storeList } from '../store.js';
 import { currentUser } from '../sync.js';
 import { SYNC_ENABLED } from '../config.js';
 import { section, row, list } from './common.js';
+import { open as openAsistente } from './asistente.js';
 
 export const meta = { key: 'mas', label: 'Más', icon: 'mas' };
 
@@ -32,6 +33,15 @@ export function render() {
         row({ iconName: 'maleta', iconColor: 'orange', title: 'Equipaje', detail: String(counts.checklist), chevron: true, onClick: () => (location.hash = '#/checklist') }),
         row({ iconName: 'notas', iconColor: 'purple', title: 'Diario', detail: String(counts.notas), chevron: true, onClick: () => (location.hash = '#/notas') }),
         row({ iconName: 'enlaces', iconColor: 'teal', title: 'Recursos', detail: String(counts.enlaces), chevron: true, onClick: () => (location.hash = '#/enlaces') })
+      )
+    )
+  );
+
+  fragment.append(
+    section(
+      'Asistente',
+      list(
+        row({ iconName: 'info', iconColor: 'tint', title: 'Preguntar al asistente', sub: 'Recomendaciones según tu viaje', chevron: true, onClick: openAsistente })
       )
     )
   );

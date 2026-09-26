@@ -140,6 +140,8 @@ export function render() {
           title: 'Equipaje listo',
           detail: `${listos}/${checklist.length}`,
           detailStrong: true,
+          chevron: true,
+          onClick: () => (location.hash = '#/checklist'),
         }),
         row({ iconName: 'calendario', iconColor: 'tint', title: 'Actividades planeadas', detail: String(itinerario.length), detailStrong: true })
       )
@@ -152,7 +154,8 @@ export function render() {
       list(
         row({ iconName: 'calendario', iconColor: 'tint', title: 'Añadir actividad', onClick: addActividad }),
         row({ iconName: 'euro', iconColor: 'green', title: 'Registrar gasto', onClick: addGasto }),
-        row({ iconName: 'lugares', iconColor: 'red', title: 'Guardar lugar', onClick: addLugar })
+        row({ iconName: 'lugares', iconColor: 'red', title: 'Guardar lugar', onClick: addLugar }),
+        row({ iconName: 'maleta', iconColor: 'orange', title: 'Ver equipaje', chevron: true, onClick: () => (location.hash = '#/checklist') })
       )
     )
   );

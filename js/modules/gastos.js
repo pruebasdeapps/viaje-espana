@@ -5,7 +5,8 @@ import { section, row, list, empty } from './common.js';
 
 export const meta = { key: 'gastos', label: 'Gastos', icon: 'euro' };
 
-const CATEGORIAS = ['Transporte', 'Alojamiento', 'Comida', 'Entradas', 'Compras', 'Salud', 'Otros'];
+const METODOS_DEFAULT = ['Efectivo', 'Tarjeta', 'Bizum', 'Otro'];
+const CATEGORIAS_DEFAULT = ['Transporte', 'Alojamiento', 'Comida', 'Entradas', 'Compras', 'Salud', 'Otros'];
 const CAT_STYLE = {
   Transporte: ['mapa', 'teal'],
   Alojamiento: ['lugares', 'purple'],
@@ -24,11 +25,12 @@ const CAT_COLOR = {
   Salud: 'var(--red)',
   Otros: 'var(--tint)',
 };
-const METODOS = ['Efectivo', 'Tarjeta', 'Bizum', 'Otro'];
 
 const baseCurrency = () => settingsAll().currency;
 const rates = () => settingsAll().rates;
 const people = () => getSetting('people') || [];
+const metodos = () => getSetting('metodos') || METODOS_DEFAULT;
+const categorias = () => getSetting('gastoCategories') || CATEGORIAS_DEFAULT;
 
 export function toBase(monto, moneda) {
   const r = rates();
@@ -44,7 +46,7 @@ function styleFor(cat) {
 }
 
 function distinctCategories(items) {
-  const set = new Set(CATEGORIAS);
+  const set = new Set(categorias());
   items.forEach((g) => g.categoria && set.add(g.categoria));
   return [...set];
 }
@@ -62,7 +64,7 @@ function fieldsFor(items) {
     { name: 'categoria', label: 'Tipo de gasto', type: 'combobox', options: distinctCategories(items), required: true, section: 'Gasto' },
     { name: 'monto', label: 'Monto', type: 'number', required: true, section: 'Importe' },
     { name: 'moneda', label: 'Moneda', type: 'select', options: Object.keys(rates()), section: 'Importe' },
-    { name: 'metodo', label: 'Método', type: 'select', options: METODOS, section: 'Importe' },
+    { name: 'metodo', label: 'Método', type: 'select', options: metodos(), section: 'Importe' },
     { name: 'pagado_por', label: 'Pagado por', type: 'combobox', options: distinctPayers(items), section: 'Importe' },
     { name: 'nota', label: 'Notas', type: 'textarea', section: 'Importe' },
     { name: 'id', type: 'hidden' },

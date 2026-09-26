@@ -16,6 +16,7 @@ import * as checklist from './modules/checklist.js';
 import * as notas from './modules/notas.js';
 import * as enlaces from './modules/enlaces.js';
 import * as ajustes from './modules/ajustes.js';
+import { open as openAsistente } from './modules/asistente.js';
 
 const MODULES = { hoy, itinerario, lugares, gastos, hospedajes, mas, documentos, checklist, notas, enlaces, ajustes };
 
@@ -123,6 +124,17 @@ function updateScrolled() {
 
 let gated = false;
 let defaultLogin = null;
+let fab = null;
+
+function ensureFab() {
+  if (fab) return;
+  fab = h('button', { class: 'fab', 'aria-label': 'Asistente', type: 'button', onClick: openAsistente }, icon('info', { size: 26, strokeWidth: 1.8 }));
+  document.body.append(fab);
+}
+
+function setFabVisible(visible) {
+  if (fab) fab.style.display = visible ? 'grid' : 'none';
+}
 
 async function loadDefaultLogin() {
   try {
@@ -135,6 +147,8 @@ async function loadDefaultLogin() {
 
 function showApp() {
   gated = false;
+  ensureFab();
+  setFabVisible(true);
   document.getElementById('tabbar').style.display = 'flex';
   renderTabbar();
   renderAppbar();
@@ -143,6 +157,7 @@ function showApp() {
 
 function renderLoginGate() {
   gated = true;
+  setFabVisible(false);
   document.getElementById('tabbar').style.display = 'none';
   clear(document.getElementById('appbar'));
   const view = document.getElementById('view');

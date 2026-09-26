@@ -10,6 +10,7 @@ node_modules/
 # Datos personales / sensibles (NO subir al repositorio)
 js/seed.local.js
 js/auth.local.js
+js/ai.local.js
 data/
 *.local.json
 

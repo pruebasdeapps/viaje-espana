@@ -4,6 +4,15 @@ import { uid } from './ui.js';
 const listeners = new Set();
 let cache = new Map();
 let syncHook = null;
+let version = 0;
+
+export function getVersion() {
+  return version;
+}
+
+function bump() {
+  version++;
+}
 
 async function loadSeed() {
   let data = [];
@@ -107,6 +116,7 @@ export async function save(collection, data) {
   };
   cache.set(id, item);
   await putItem(item);
+  bump();
   notify(item);
   emit();
   return item;
@@ -118,6 +128,7 @@ export async function remove(id) {
   const item = { ...existing, deleted: true, updated_at: new Date().toISOString() };
   cache.set(id, item);
   await putItem(item);
+  bump();
   notify(item);
   emit();
 }
@@ -170,6 +181,7 @@ export async function importJSON(text) {
   }));
   await putItems(normalized);
   for (const item of normalized) cache.set(item.id, item);
+  bump();
   emit();
   return normalized.length;
 }
@@ -182,5 +194,6 @@ export async function resetAll() {
     await seed(data);
     for (const item of cache.values()) notify(item);
   }
+  bump();
   emit();
 }
