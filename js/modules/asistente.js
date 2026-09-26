@@ -4,7 +4,7 @@ import { get as getSetting, all as settingsAll } from '../settings.js';
 import { searchUrl, openExternal, mapUrl, mapsSearchUrl } from '../platform.js';
 import { CITY_COUNTRY } from '../geo.js';
 import { toBase, computeBalances, settle } from './gastos.js';
-import { askChat } from '../ai.js';
+import { chat } from '../ai.js';
 import { searchPlaces, searchOverpass } from '../search.js';
 import { coordsForCity } from '../weather.js';
 
@@ -202,6 +202,68 @@ async function findPlaces(text) {
   return [];
 }
 
+const SYSTEM_PROMPT = [
+  'Eres "Papacito", el asistente de viaje de una familia (viaje por España, Italia y Francia en febrero de 2027).',
+  'Hablas SIEMPRE en español, con tono cercano y natural, como un amigo que conoce bien el viaje.',
+  'Sé breve (2-4 frases) salvo que te pidan detalle.',
+  'Abajo tienes el CONTEXTO real del viaje (itinerario, alojamientos, reservas, gastos, equipaje y lugares).',
+  'Cuando te pregunten por el viaje, responde usando ese contexto con precisión y sin inventar; NO menciones la palabra "contexto".',
+  'Si preguntan algo que no está ahí, responde con tu criterio general de viajes.',
+  'Mantén una conversación fluida y recuerda los mensajes anteriores.',
+].join(' ');
+
+function buildContext() {
+  const lines = [];
+  const dates = tripDates();
+  const order = getSetting('countryOrder') || [];
+
+  if (dates.length) lines.push('Fechas del viaje: ' + fmtDateLong(dates[0]) + ' a ' + fmtDateLong(dates[dates.length - 1]));
+  if (order.length) lines.push('Ruta: ' + order.join(' → '));
+
+  const it = storeList('itinerario');
+  if (it.length) {
+    const byDay = new Map();
+    for (const a of it) {
+      const k = a.fecha || '?';
+      if (!byDay.has(k)) byDay.set(k, []);
+      byDay.get(k).push(a);
+    }
+    lines.push('\nITINERARIO:');
+    for (const [f, arr] of [...byDay.entries()].sort()) {
+      lines.push(`${f}: ` + arr.sort(byTime).map((a) => `${a.hora ? a.hora + ' ' : ''}${a.titulo}${a.lugar ? ' (' + a.lugar + ')' : ''}`).join('; '));
+    }
+  }
+
+  const hs = storeList('hospedajes');
+  if (hs.length) lines.push('\nALOJAMIENTOS:\n' + hs.map((h) => `${h.nombre}, ${h.ciudad} (${h.fecha_in} a ${h.fecha_out})`).join('\n'));
+
+  const ds = storeList('documentos');
+  if (ds.length) lines.push('\nRESERVAS Y ENTRADAS:\n' + ds.map((d) => `${d.tipo}: ${d.titulo}${d.fecha ? ' ' + d.fecha : ''}${d.hora ? ' ' + d.hora : ''}`).join('\n'));
+
+  const g = storeList('gastos');
+  if (g.length) {
+    const total = g.reduce((s, x) => s + toBase(x.monto, x.moneda), 0);
+    const bal = [...computeBalances(g).entries()].map(([n, v]) => `${n}: ${fmtMoney(v, cur())}`).join('; ');
+    lines.push('\nGASTOS: total ' + fmtMoney(total, cur()) + '\nSaldos por persona: ' + bal);
+  }
+
+  const c = storeList('checklist');
+  if (c.length) lines.push('\nEQUIPAJE (' + c.filter((x) => x.hecho).length + '/' + c.length + '): ' + c.map((x) => x.titulo).join(', '));
+
+  const l = storeList('lugares');
+  if (l.length) {
+    const byCity = new Map();
+    for (const x of l) {
+      const k = x.ciudad || '?';
+      if (!byCity.has(k)) byCity.set(k, []);
+      byCity.get(k).push(x.nombre);
+    }
+    lines.push('\nLUGARES GUARDADOS:\n' + [...byCity.entries()].map(([ci, arr]) => `${ci}: ${arr.join(', ')}`).join('\n'));
+  }
+
+  return lines.join('\n');
+}
+
 export function open() {
   if (document.querySelector('.chat-overlay')) return;
   const overlay = h('div', { class: 'chat-overlay' });
@@ -259,24 +321,27 @@ export function open() {
     };
   }
 
-  const ask = (text) => {
+  const history = [];
+
+  const ask = async (text) => {
     if (!text || !text.trim()) return;
     bubble('user', text);
-    const ans = answer(text);
-    bubble('bot', ans.text);
-
-    if (!ans.matched) {
-      setTimeout(async () => {
-        const loading = bubble('bot', 'Consultando…');
-        try {
-          const r = await askChat(text);
-          loading.setText(r || 'No obtuve respuesta.');
-          loading.setGoogle(text);
-        } catch (e) {
-          loading.setText('No pude consultar la IA.');
-          loading.setGoogle(text);
-        }
-      }, 250);
+    const loading = bubble('bot', '…');
+    try {
+      const messages = [
+        { role: 'system', content: SYSTEM_PROMPT + '\n\nCONTEXTO DEL VIAJE:\n' + buildContext() },
+        ...history,
+        { role: 'user', content: text },
+      ];
+      const reply = await chat(messages);
+      loading.setText(reply || 'No obtuve respuesta.');
+      history.push({ role: 'user', content: text });
+      history.push({ role: 'assistant', content: reply || '' });
+      if (history.length > 10) history.splice(0, history.length - 10);
+    } catch (e) {
+      const ans = answer(text);
+      loading.setText(ans.text);
+      loading.setGoogle(text);
     }
 
     if (categoryTag(text)) {
@@ -289,7 +354,7 @@ export function open() {
         } catch (_) {
           /* sin resultados */
         }
-      }, 600);
+      }, 400);
     }
   };
 

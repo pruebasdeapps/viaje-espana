@@ -64,6 +64,10 @@ export async function askChat(query) {
   ]);
 }
 
+export async function chat(messages) {
+  return callAI(messages);
+}
+
 export async function suggestChecklist(context) {
   const prompt =
     'Eres un asistente de viajes. El usuario viaja por: ' +
