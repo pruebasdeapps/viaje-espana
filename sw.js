@@ -1,4 +1,4 @@
-const CACHE = 'viaje-v6';
+const CACHE = 'viaje-v7';
 
 const APP_SHELL = [
   './',
@@ -12,6 +12,7 @@ const APP_SHELL = [
   './js/ui.js',
   './js/store.js',
   './js/sync.js',
+  './js/storage.js',
   './js/settings.js',
   './js/platform.js',
   './js/geo.js',

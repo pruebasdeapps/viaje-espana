@@ -33,3 +33,27 @@ create policy "trip_items_delete" on public.trip_items
 
 -- Nota: NO se usa trigger de updated_at a propósito.
 -- La app controla "updated_at" para resolver conflictos (gana el último cambio).
+
+-- ============================================================
+-- Almacenamiento de entradas (PDF, .pkpass, imágenes)
+-- ============================================================
+insert into storage.buckets (id, name, public)
+values ('entradas', 'entradas', false)
+on conflict (id) do nothing;
+
+drop policy if exists "entradas_select" on storage.objects;
+create policy "entradas_select" on storage.objects
+  for select to authenticated using (bucket_id = 'entradas');
+
+drop policy if exists "entradas_insert" on storage.objects;
+create policy "entradas_insert" on storage.objects
+  for insert to authenticated with check (bucket_id = 'entradas');
+
+drop policy if exists "entradas_update" on storage.objects;
+create policy "entradas_update" on storage.objects
+  for update to authenticated using (bucket_id = 'entradas');
+
+drop policy if exists "entradas_delete" on storage.objects;
+create policy "entradas_delete" on storage.objects
+  for delete to authenticated using (bucket_id = 'entradas');
+

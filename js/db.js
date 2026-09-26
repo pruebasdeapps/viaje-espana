@@ -1,6 +1,7 @@
 const DB_NAME = 'viaje-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = 'items';
+const FILES = 'files';
 
 let dbPromise = null;
 
@@ -15,6 +16,9 @@ function openDB() {
         store.createIndex('collection', 'collection', { unique: false });
         store.createIndex('updated_at', 'updated_at', { unique: false });
       }
+      if (!db.objectStoreNames.contains(FILES)) {
+        db.createObjectStore(FILES, { keyPath: 'path' });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -24,6 +28,10 @@ function openDB() {
 
 function tx(mode) {
   return openDB().then((db) => db.transaction(STORE, mode).objectStore(STORE));
+}
+
+function fileTx(mode) {
+  return openDB().then((db) => db.transaction(FILES, mode).objectStore(FILES));
 }
 
 export async function allItems() {
@@ -72,4 +80,31 @@ export async function persistStorage() {
     /* noop */
   }
   return false;
+}
+
+export async function putFile(record) {
+  const store = await fileTx('readwrite');
+  return new Promise((resolve, reject) => {
+    const req = store.put(record);
+    req.onsuccess = () => resolve(record);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function getFile(path) {
+  const store = await fileTx('readonly');
+  return new Promise((resolve, reject) => {
+    const req = store.get(path);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function deleteFile(path) {
+  const store = await fileTx('readwrite');
+  return new Promise((resolve, reject) => {
+    const req = store.delete(path);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
 }
