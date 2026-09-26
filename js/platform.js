@@ -72,6 +72,10 @@ export function searchUrl(query) {
   return `https://www.google.com/search?q=${q(query)}`;
 }
 
+export function mapsSearchUrl(query) {
+  return `https://www.google.com/maps/search/?api=1&query=${q(query)}`;
+}
+
 export function telUrl(phone) {
   return `tel:${String(phone).replace(/[^\d+]/g, '')}`;
 }

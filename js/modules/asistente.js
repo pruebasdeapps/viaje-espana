@@ -1,10 +1,11 @@
 import { h, fmtMoney, icon, enterOverlay, closeTopOverlay } from '../ui.js';
 import { list as storeList } from '../store.js';
 import { get as getSetting, all as settingsAll } from '../settings.js';
-import { searchUrl, openExternal } from '../platform.js';
+import { searchUrl, openExternal, mapUrl, mapsSearchUrl } from '../platform.js';
 import { CITY_COUNTRY } from '../geo.js';
 import { toBase } from './gastos.js';
 import { askChat } from '../ai.js';
+import { searchPlaces } from '../search.js';
 
 export const meta = { key: 'asistente', label: 'Papacito', icon: 'info' };
 
@@ -14,6 +15,15 @@ function findCity(query) {
   const q = query.toLowerCase();
   for (const city of Object.keys(CITY_COUNTRY)) if (q.includes(city.toLowerCase())) return city;
   return null;
+}
+
+function searchQueryFor(text) {
+  const q = text.toLowerCase();
+  const city = findCity(text);
+  if (city && /(comer|comida|restaurant|cenar|almorzar|tapa|bar|cafe)/.test(q)) return 'restaurantes ' + city;
+  if (city && /(ver|visitar|atraccion|museo|turismo|que hacer|monumento)/.test(q)) return 'atracciones turísticas ' + city;
+  if (city) return city + ' ' + text.replace(/[¿?¡!]/g, '').replace(city, '').trim();
+  return text.replace(/[¿?¡!]/g, '').trim();
 }
 
 function placesList(title, places) {
@@ -124,6 +134,25 @@ export function open() {
         wrap.append(h('button', { class: 'msg__link', onClick: () => openExternal(searchUrl(q)) }, 'Buscar en Google'));
         scroll();
       },
+      setResults: (results) => {
+        const box = h('div', { class: 'msg__results' });
+        for (const r of results || []) {
+          box.append(
+            h(
+              'button',
+              { class: 'msg__result', onClick: () => openExternal(mapUrl({ lat: r.lat, lng: r.lng, nombre: r.name })) },
+              h('b', {}, r.name),
+              r.address ? h('small', {}, r.address) : null
+            )
+          );
+        }
+        wrap.append(box);
+        scroll();
+      },
+      setMaps: (q) => {
+        wrap.append(h('button', { class: 'msg__link', onClick: () => openExternal(mapsSearchUrl(q)) }, 'Ver en Google Maps'));
+        scroll();
+      },
     };
   }
 
@@ -144,6 +173,18 @@ export function open() {
         loading.setGoogle(text);
       }
     }, 350);
+
+    setTimeout(async () => {
+      try {
+        const query = searchQueryFor(text);
+        const results = await searchPlaces(query);
+        const m = bubble('bot', results.length ? 'Sitios encontrados (toca para ir en Maps):' : 'Búscalo en el mapa:');
+        if (results.length) m.setResults(results);
+        m.setMaps(query);
+      } catch (_) {
+        /* sin resultados */
+      }
+    }, 900);
   };
 
   sendBtn.addEventListener('click', () => {
